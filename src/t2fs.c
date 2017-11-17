@@ -62,7 +62,7 @@ WORD validPath(char *filename){
     int entry = 0, lenght = strlen(filename);
     BYTE type;
     const char *temp;
-    char name[MAX_FILE_NAME_SIZE], auxName[lenght + 1], truncated[MAX_FILE_NAME_SIZE];
+    char name[MAX_FILE_NAME_SIZE], auxName[lenght + 1], truncated[MAX_FILE_NAME_SIZE], backPath[lenght + 1];
     WORD father;
     int back = 0;
     strcpy(auxName, filename);
@@ -75,14 +75,30 @@ WORD validPath(char *filename){
     }
     printf("um - %s|%s\n",filename,auxName);
     printf("cinco\n");
-    while(strcmp(strtok(auxName,"/"), "..") == 0){
+    strcpy(truncated,(strtok(auxName,"/")));
+    strcpy(backPath,truncated);
+    while(strcmp(truncated, "..") == 0){
+        back++;
+        printf("seis - %s | %s | %s | %s\n", filename,auxName,truncated,backPath);
+        if(strcmp(backPath, filename) != 0 && strcmp(strcat(backPath,"/"), filename) != 0){
+            printf("seis e meio\n");
+            strcpy(truncated,(strtok(NULL,"/")));
+            strcat(backPath,truncated);
+        } else {
+            break;
+        }
+        if(back > 10){
+            break;
+        }
+    }
+    /*while(strcmp(strtok(auxName,"/"), "..") == 0){
         back++;
         filename = auxName;
         printf("seis - %s\n", auxName);
         if(back > 10){
             break;
         }
-    }
+    }*/
     if(read_sector(currentDir, buffer) != 0){
         printf("sete\n");
         return 1;
