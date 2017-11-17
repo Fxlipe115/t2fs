@@ -20,6 +20,7 @@ sBlock *superblock;
 
 int t2fsInit(){
     const char *temp;
+    Record parent, self, empty, block[4];
     superblock = malloc(sizeof(sBlock));
     if((read_sector(0, buffer)) != 0){
         return -1;
@@ -52,7 +53,28 @@ int t2fsInit(){
     printf("RootDirCluster: %hu\n",superblock->RootDirCluster);
     printf("DataSectorStart: %hu\n",superblock->DataSectorStart);
 
-    currentDir = superblock->DataSectorStart + superblock->RootDirCluster;
+    currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE;
+
+    self.TypeVal = TYPEVAL_DIRETORIO;
+    strcpy(self.name, ".");
+    self.bytesFileSize = superblock->SectorsPerCluster*SECTOR_SIZE;
+    self.firstCluster = currentDir;
+
+    parent.TypeVal = TYPEVAL_DIRETORIO;
+    strcpy(parent.name, "..");
+    parent.bytesFileSize = superblock->SectorsPerCluster*SECTOR_SIZE;
+    parent.firstCluster = currentDir;
+
+    empty.TypeVal = TYPEVAL_INVALIDO;
+
+    block[0] = self;
+    block[1] = parent;
+    block[2] = empty;
+    block[3] = empty;
+    memcpy(buffer,block,SECTOR_SIZE);
+    if(write_sector(currentDir,buffer) != 0){
+        return -1;
+    }
 
     return 0;
 }
@@ -67,7 +89,7 @@ WORD validPath(char *filename){
     int back = 0;
     strcpy(auxName, filename);
     if(strcmp(auxName, "/") == 0){
-        if(read_sector((superblock->RootDirCluster + superblock->DataSectorStart), buffer) != 0){
+        if(read_sector((superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE + superblock->DataSectorStart), buffer) != 0){
             return -1;
         } else {
             return superblock->RootDirCluster;
@@ -85,9 +107,6 @@ WORD validPath(char *filename){
             strcpy(truncated,(strtok(NULL,"/")));
             strcat(backPath,truncated);
         } else {
-            break;
-        }
-        if(back > 10){
             break;
         }
     }
@@ -169,8 +188,10 @@ int firstFitFat(){
 
 FILE2 create2 (char *filename){
     WORD father;
+    int saida;
     if(!InitializedDisk){
-        t2fsInit();
+        saida = t2fsInit();
+        printf("%d\n", saida);
     }
     father = validPath(filename);
     printf("%hu\n", father);
