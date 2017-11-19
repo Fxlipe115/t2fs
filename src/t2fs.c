@@ -53,7 +53,8 @@ int t2fsInit(){
     printf("RootDirCluster: %hu\n",superblock->RootDirCluster);
     printf("DataSectorStart: %hu\n",superblock->DataSectorStart);
 
-    currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE;
+    //currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE;
+    currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster;
 
     self.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(self.name, ".");
@@ -75,12 +76,12 @@ int t2fsInit(){
     if(write_sector(currentDir,buffer) != 0){
         return -1;
     }
-
+    printf("current dir: %hu\n", currentDir);
     return 0;
 }
 
 
-WORD validPath(char *filename){
+/*WORD validPath(char *filename){
     int entry = 0, lenght = strlen(filename);
     BYTE type;
     const char *temp;
@@ -109,7 +110,7 @@ WORD validPath(char *filename){
         } else {
             break;
         }
-    }
+    }*/
     /*while(strcmp(strtok(auxName,"/"), "..") == 0){
         back++;
         filename = auxName;
@@ -118,7 +119,7 @@ WORD validPath(char *filename){
             break;
         }
     }*/
-    if(read_sector(currentDir, buffer) != 0){
+  /*  if(read_sector(currentDir, buffer) != 0){
         printf("sete\n");
         return 1;
     }
@@ -173,7 +174,200 @@ WORD validPath(char *filename){
     }
     printf("dezenove\n");
     return 1;
+}*/
+
+WORD validPath(char *filename, char fileType){
+    int lenght = strlen(filename);
+    int normalFile = 0;
+    DWORD entry = 0;
+    char name[MAX_FILE_NAME_SIZE], auxName[lenght + 1], truncated[MAX_FILE_NAME_SIZE], previous[MAX_FILE_NAME_SIZE];
+    char *safeCopy = filename;
+    DWORD cluster = 1;
+    strcpy(auxName, filename);
+    if(strcmp(auxName, "/") == 0){
+        if(read_sector((superblock->RootDirCluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
+            printf("retorno 1\n");
+            printf("retorno 2\n");
+            return 1;
+        } else {
+            if(fileType == 'd'){
+                printf("retorno 3\n");
+                return superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster;
+            } else {
+                printf("retorno 4\n");
+                return 1;
+            }
+        }
+    }
+    strcpy(truncated,(strtok(auxName,"/")));
+    if(read_sector(currentDir, buffer) != 0){
+        printf("retorno 4\n");
+        return 1;
+    }
+    entry = 0;
+    //while(truncated != NULL){
+    while(strcmp(truncated,"") != 0){
+        strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
+        printf("name:%s\n", name);
+        while(strcmp(truncated,name) != 0 && entry < (superblock->SectorsPerCluster*SECTOR_SIZE)){
+            printf("truncated: %s | %s\n", truncated,name);
+            entry = entry + sizeof(Record);
+            strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
+            if(name == NULL){
+                printf("retorno 5\n");
+                printf("NULLLLLLLL\n");
+                return 1;
+            }
+            printf("entry: %hu | %hu\n", entry, (superblock->SectorsPerCluster*SECTOR_SIZE));
+        }
+        //strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
+        if(strcmp(truncated,name) == 0){
+            //if(strcmp(truncated,(const char *)(buffer + entry)) == TYPEVAL_REGULAR){
+            if(*((BYTE *)(buffer + entry)) == TYPEVAL_REGULAR){
+                normalFile++;
+                if(normalFile > 1){
+                    printf("retorno 6\n");
+                    return 1;
+                }
+            }
+            cluster = *((DWORD *)(buffer + entry + 1 + MAX_FILE_NAME_SIZE + 4));
+            printf("cluster is %hu\n", cluster);
+            if(read_sector(cluster, buffer) != 0){
+                printf("retorno 7\n");
+                return 1;
+            }
+            entry = 0;
+        } else {
+            printf("retorno 8\n");
+            printf("truncated: %s | %s\n", truncated,name);
+            return 1;
+        }
+        strcpy(previous,truncated);
+        //strcpy(truncated,(strtok(NULL,"/")));
+        printf("ok\n");
+        safeCopy = (strtok(NULL,"/"));
+        if(safeCopy != NULL){
+            strcpy(truncated,(strtok(NULL,"/")));
+        } else {
+             strcpy(truncated,"");
+        }
+
+        //strncpy(truncated,(strtok(NULL,"/")), MAX_FILE_NAME_SIZE);
+        printf("previous: %s\ntruncated: %s\n", previous, truncated);
+    }
+    if(fileType == 'd' && normalFile > 0){
+            printf("retorno 9\n");
+            return 1;
+    }
+    printf("retorno 10\n");
+    return cluster;
+        /*if(strcmp(truncated,".") == 0){
+            if(read_sector((currentDir*superblock->SectorsPerCluster*SECTOR_SIZE + superblock->DataSectorStart), buffer) != 0){
+                return -1;
+            }
+            if(*((BYTE *)(buffer)) != TYPEVAL_DIRETORIO){
+                return -1;
+            }
+
+        } else {
+            if(strcmp(truncated,"..") == 0){
+                if(read_sector((currentDir*superblock->SectorsPerCluster*SECTOR_SIZE + superblock->DataSectorStart), buffer) != 0){
+                    return -1;
+                }
+            } else {
+
+            }
+        }*/
 }
+   /* strcpy(truncated,(strtok(NULL,"/")));
+    }
+
+
+
+    strcpy(truncated,(strtok(auxName,"/")));
+
+
+
+
+    printf("um - %s|%s\n",filename,auxName);
+    printf("cinco\n");
+    strcpy(truncated,(strtok(auxName,"/")));
+    strcpy(backPath,truncated);
+    while(strcmp(truncated, "..") == 0){
+        back++;
+        printf("seis - %s | %s | %s | %s\n", filename,auxName,truncated,backPath);
+        if(strcmp(backPath, filename) != 0 && strcmp(strcat(backPath,"/"), filename) != 0){
+            printf("seis e meio\n");
+            strcpy(truncated,(strtok(NULL,"/")));
+            strcat(backPath,truncated);
+        } else {
+            break;
+        }
+    }*/
+    /*while(strcmp(strtok(auxName,"/"), "..") == 0){
+        back++;
+        filename = auxName;
+        printf("seis - %s\n", auxName);
+        if(back > 10){
+            break;
+        }
+    }*/
+   /*if(read_sector(currentDir, buffer) != 0){
+        printf("sete\n");
+        return 1;
+    }
+    father = currentDir;
+    while(back > 0){
+        type = *((BYTE *)(buffer + sizeof(Record)));
+        if(type != TYPEVAL_DIRETORIO){
+            printf("oito\n");
+            return 1;
+        }
+        if(read_sector(*((DWORD *)(buffer + sizeof(Record) + 6 + MAX_FILE_NAME_SIZE)), buffer) != 0){
+            printf("nove\n");
+            return 1;
+        }
+        printf("dez\n");
+   }
+   read_sector(currentDir, buffer);
+
+    temp = (char *) buffer + sizeof(BYTE);
+    strcpy(auxName,filename);
+    printf("dez e meio\n");
+    strcpy(truncated,(strtok(auxName,"/")));
+    printf("onze\n");
+    while(entry < superblock->SectorsPerCluster*SECTOR_SIZE){
+        type = *((BYTE *)(buffer + entry));
+        strncpy(name, (temp + entry), MAX_FILE_NAME_SIZE);
+        if(name == truncated){
+            printf("doze\n");
+            strcpy(truncated,(strtok(auxName,"/")));
+            if(type == TYPEVAL_REGULAR){
+                printf("treze\n");
+                if(truncated == NULL){
+                    printf("catorze\n");
+                    return father;
+                } else {
+                    printf("quinze\n");
+                    return 1; //an archive does not have dirs on it;
+                }
+            } else {
+                if(type == TYPEVAL_DIRETORIO){
+                    printf("dezesseis\n");
+                    father = read_sector(*((DWORD *)(buffer + entry + 6 + MAX_FILE_NAME_SIZE)), buffer);
+                    if(father != 0){
+                        printf("dezessete\n");
+                        return 1;
+                    }
+                }
+            }
+        }
+        entry = entry + sizeof(Record);
+        printf("dezoito\n");
+    }
+    printf("dezenove\n");
+    return 1;
+}*/
 
 int firstFitFat(){
     int sector = superblock->pFATSectorStart;
@@ -188,12 +382,10 @@ int firstFitFat(){
 
 FILE2 create2 (char *filename){
     WORD father;
-    int saida;
     if(!InitializedDisk){
-        saida = t2fsInit();
-        printf("%d\n", saida);
+        t2fsInit();
     }
-    father = validPath(filename);
+    father = validPath(filename,'d');
     printf("%hu\n", father);
     if(father == 1){
         return -1;
