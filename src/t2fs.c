@@ -20,7 +20,7 @@ sBlock *superblock;
 
 int t2fsInit(){
     const char *temp;
-    Record parent, self, empty, block[4];
+    //Record parent, self, empty, block[4];
     superblock = malloc(sizeof(sBlock));
     if((read_sector(0, buffer)) != 0){
         return -1;
@@ -56,7 +56,7 @@ int t2fsInit(){
     //currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE;
     currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster;
 
-    self.TypeVal = TYPEVAL_DIRETORIO;
+    /*self.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(self.name, ".");
     self.bytesFileSize = superblock->SectorsPerCluster*SECTOR_SIZE;
     self.firstCluster = currentDir;
@@ -75,8 +75,9 @@ int t2fsInit(){
     memcpy(buffer,block,SECTOR_SIZE);
     if(write_sector(currentDir,buffer) != 0){
         return -1;
-    }
+    }*/
     printf("current dir: %hu\n", currentDir);
+    printf("which position is %hu\n",(superblock->DataSectorStart*SECTOR_SIZE + superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE));
     return 0;
 }
 
@@ -178,29 +179,30 @@ int t2fsInit(){
 
 WORD validPath(char *filename, char fileType){
     int lenght = strlen(filename);
-    int normalFile = 0;
+    int normalFile = 0, numOfSectors = 0;
     DWORD entry = 0;
     char name[MAX_FILE_NAME_SIZE], auxName[lenght + 1], truncated[MAX_FILE_NAME_SIZE], previous[MAX_FILE_NAME_SIZE];
     char *safeCopy = filename;
-    DWORD cluster = 1;
+    DWORD cluster = (currentDir - superblock->DataSectorStart)/superblock->SectorsPerCluster;
+    printf("cluster inicial: %hu\n", cluster);
     strcpy(auxName, filename);
     if(strcmp(auxName, "/") == 0){
         if(read_sector((superblock->RootDirCluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
             printf("retorno 1\n");
-            printf("retorno 2\n");
             return 1;
         } else {
             if(fileType == 'd'){
-                printf("retorno 3\n");
+                printf("retorno 2\n");
                 return superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster;
             } else {
-                printf("retorno 4\n");
+                printf("retorno 3\n");
                 return 1;
             }
         }
     }
     strcpy(truncated,(strtok(auxName,"/")));
-    if(read_sector(currentDir, buffer) != 0){
+    printf("cluster: %hu | sector: %hu\n", cluster, (cluster*superblock->SectorsPerCluster + superblock->DataSectorStart));
+    if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
         printf("retorno 4\n");
         return 1;
     }
@@ -208,17 +210,33 @@ WORD validPath(char *filename, char fileType){
     //while(truncated != NULL){
     while(strcmp(truncated,"") != 0){
         strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
-        printf("name:%s\n", name);
-        while(strcmp(truncated,name) != 0 && entry < (superblock->SectorsPerCluster*SECTOR_SIZE)){
-            printf("truncated: %s | %s\n", truncated,name);
-            entry = entry + sizeof(Record);
-            strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
-            if(name == NULL){
-                printf("retorno 5\n");
-                printf("NULLLLLLLL\n");
-                return 1;
+        numOfSectors = 0;
+        //printf("name:%s\n", name);
+        //while(strcmp(truncated,name) != 0 && entry < (superblock->SectorsPerCluster*SECTOR_SIZE)){
+        while(numOfSectors < superblock->SectorsPerCluster){
+            while(strcmp(truncated,name) != 0 && entry <= SECTOR_SIZE - sizeof(Record)){
+                printf("truncated: %s | %s\n", truncated,name);
+                entry = entry + sizeof(Record);
+                strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
+                printf("position: %hu\n",(int)(buffer + entry + 1));
+                if(name == NULL){
+                    printf("retorno 5\n");
+                    printf("NULLLLLLLL\n");
+                    return 1;
+                }
+                printf("entry: %hu | %hu*%d\n", entry, numOfSectors,SECTOR_SIZE);
             }
-            printf("entry: %hu | %hu\n", entry, (superblock->SectorsPerCluster*SECTOR_SIZE));
+            if(entry > SECTOR_SIZE - sizeof(Record)){
+                printf("entry is %hu\n", entry);
+                if(read_sector(((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart) + 1), buffer) != 0){
+                    printf("retornoo\n");
+                    return 1;
+                }
+                entry = 0;
+                numOfSectors++;
+            } else {
+                break;
+            }
         }
         //strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
         if(strcmp(truncated,name) == 0){
@@ -232,7 +250,7 @@ WORD validPath(char *filename, char fileType){
             }
             cluster = *((DWORD *)(buffer + entry + 1 + MAX_FILE_NAME_SIZE + 4));
             printf("cluster is %hu\n", cluster);
-            if(read_sector(cluster, buffer) != 0){
+            if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
                 printf("retorno 7\n");
                 return 1;
             }
@@ -247,7 +265,7 @@ WORD validPath(char *filename, char fileType){
         printf("ok\n");
         safeCopy = (strtok(NULL,"/"));
         if(safeCopy != NULL){
-            strcpy(truncated,(strtok(NULL,"/")));
+            strcpy(truncated,safeCopy);
         } else {
              strcpy(truncated,"");
         }
