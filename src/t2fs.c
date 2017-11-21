@@ -94,11 +94,14 @@ WORD validPath(char *filename, char fileType){
             return 1;
         } else {
             if(fileType == 'd'){
-                return superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster; //Valid path: root
+                return superblock->RootDirCluster; //Valid path: root
             } else {
                 return 1;
             }
         }
+    }
+    if(*((BYTE*)filename) == '/'){
+        cluster = superblock->RootDirCluster;
     }
     strcpy(truncated,(strtok(auxName,"/")));
     if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
@@ -153,7 +156,7 @@ WORD validPath(char *filename, char fileType){
         }
     }
     if(fileType == 'd' && normalFile > 0){
-            return 1; //Invalid, cannot have any normal type file if it's looking for a dir
+        return 1; //Invalid, cannot have any normal type file if it's looking for a dir
     }
     return cluster; //Valid Path, return cluster number
 }
@@ -173,12 +176,47 @@ int firstFitFat(){
     return -1;
 }
 
+void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
+    char auxName[strlen(filename) + 1], *safeCopy = filename, previous[strlen(filename) + 1];
+    int endOfPath = 0;
+    if(*((BYTE*)filename) == '/'){
+        strcpy(path,"/");
+    } else {
+        strcpy(path,"");
+    }
+    strcpy(auxName, filename);
+    safeCopy = strtok(auxName,"/");
+    if(safeCopy != NULL){
+        strcat(path,safeCopy);
+        strcpy(previous,path);
+        strcpy(name,safeCopy);
+    } else {
+        endOfPath = 1;
+    }
+    while(!endOfPath){
+        safeCopy = strtok(NULL,"/");
+        if(safeCopy != NULL){
+            strcpy(previous,path);
+            printf("%s\n", path);
+            strcat(path,"/");
+            strcat(path,safeCopy);
+            strcpy(name,safeCopy);
+        } else {
+            endOfPath = 1;
+        }
+    }
+    strcpy(path,previous);
+}
+
 FILE2 create2 (char *filename){
     WORD father;
+    char path[strlen(filename) + 1], name[MAX_FILE_NAME_SIZE];
     if(!InitializedDisk){
         t2fsInit();
     }
-    father = validPath(filename,'d');
+    extractPath(filename,path,name);
+    printf("filename: %s | path: %s | name: %s\n", filename, path, name);
+    father = validPath(path,'d');
     printf("%hu\n", father);
     if(father == 1){
         return -1;
