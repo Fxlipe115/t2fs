@@ -81,7 +81,7 @@ int t2fsInit(){
 /* This funtion check is a path is valid.
     fileType is 'd' if looking for a dir, any other char if looking for a file.
     Return 1 if the path is not valid, the cluster number if it is */
-WORD validPath(char *filename, char fileType){
+DWORD validPath(char *filename, char fileType){
     int lenght = strlen(filename);
     int normalFile = 0, numOfSectors = 0;
     DWORD entry = 0;
@@ -162,16 +162,20 @@ WORD validPath(char *filename, char fileType){
 }
 
 
-int firstFitFat(){
-    int sector = superblock->pFATSectorStart + 1;
+DWORD firstFitFat(){
+    int sector = superblock->pFATSectorStart, entry = 0;;
     while(sector < superblock->DataSectorStart){
         if(read_sector(sector, buffer) != 0){
             return -1;
         }
-        if(*((DWORD *)buffer) == 0x00000000){
-            return sector;
+        while(entry < SECTOR_SIZE/4){
+            if(*((DWORD *)buffer + entry) == 0x00000000){
+                return (sector-1)*SECTOR_SIZE + entry/4;
+            }
+            entry = entry + 4;
         }
         sector++;
+        entry = 0;
     }
     return -1;
 }
@@ -209,7 +213,7 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
 }
 
 FILE2 create2 (char *filename){
-    WORD father;
+    DWORD father, freeCluster;
     char path[strlen(filename) + 1], name[MAX_FILE_NAME_SIZE];
     if(!InitializedDisk){
         t2fsInit();
@@ -221,7 +225,12 @@ FILE2 create2 (char *filename){
     if(father == 1){
         return -1;
     }
-    printf("first free cluster: %d\n", firstFitFat());
+    freeCluster = firstFitFat();
+    printf("first free cluster: %d\n", freeCluster);
+    /*if(read_sector(freeCluster, buffer) != 0){
+        return -1;
+    }*/
+
     return 0;
 }
 
