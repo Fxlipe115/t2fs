@@ -75,12 +75,12 @@ int t2fsInit(){
     if(write_sector(currentDir,buffer) != 0){
         return -1;
     }*/
-    printf("current dir: %hu\n", currentDir);
-    printf("which position is %hu\n",(superblock->DataSectorStart*SECTOR_SIZE + superblock->RootDirCluster*superblock->SectorsPerCluster*SECTOR_SIZE));
     return 0;
 }
 
-
+/* This funtion check is a path is valid.
+    fileType is 'd' if looking for a dir, any other char if looking for a file.
+    Return 1 if the path is not valid, the cluster number if it is */
 WORD validPath(char *filename, char fileType){
     int lenght = strlen(filename);
     int normalFile = 0, numOfSectors = 0;
@@ -160,12 +160,15 @@ WORD validPath(char *filename, char fileType){
 
 
 int firstFitFat(){
-    int sector = superblock->pFATSectorStart;
+    int sector = superblock->pFATSectorStart + 1;
     while(sector < superblock->DataSectorStart){
-        if(sector == 0x00000000){
+        if(read_sector(sector, buffer) != 0){
+            return -1;
+        }
+        if(*((DWORD *)buffer) == 0x00000000){
             return sector;
         }
-        sector = sector + SECTOR_SIZE;
+        sector++;
     }
     return -1;
 }
@@ -180,6 +183,7 @@ FILE2 create2 (char *filename){
     if(father == 1){
         return -1;
     }
+    printf("first free cluster: %d\n", firstFitFat());
     return 0;
 }
 
