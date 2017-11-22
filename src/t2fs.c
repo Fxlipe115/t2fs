@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include "t2fs.h"
 #include "apidisk.h"
 
@@ -11,6 +12,7 @@ int InitializedDisk = 0;
 unsigned char buffer[SECTOR_SIZE];
 int openFiles[10] = {-1};
 DWORD currentDir;
+unsigned int handle = 0;
 
 
 typedef struct t2fs_superbloco sBlock;
@@ -180,6 +182,28 @@ DWORD firstFitFat(){
     return -1;
 }
 
+/* returns the index of the first unused entry on a dir */
+int unusedEntryDir(DWORD cluster){
+    DWORD entry = 0;
+    char candidate[MAX_FILE_NAME_SIZE];
+    int numOfSectors = 0;
+    while(numOfSectors < superblock->SectorsPerCluster){
+        if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart + numOfSectors), buffer) != 0){
+            return -1;
+        }
+        while(entry <= SECTOR_SIZE - sizeof(Record)){
+            strncpy(candidate,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
+            entry = entry + sizeof(Record);
+            if(strcmp(candidate,"") == 0){
+                return (numOfSectors*SECTOR_SIZE + entry)/sizeof(Record);
+            }
+        }
+        numOfSectors++;
+        entry = 0;
+    }
+    return -1;
+}
+
 void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
     char auxName[strlen(filename) + 1], *safeCopy = filename, previous[strlen(filename) + 1];
     int endOfPath = 0;
@@ -201,7 +225,7 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
         safeCopy = strtok(NULL,"/");
         if(safeCopy != NULL){
             strcpy(previous,path);
-            printf("%s\n", path);
+            //printf("%s\n", path);
             strcat(path,"/");
             strcat(path,safeCopy);
             strcpy(name,safeCopy);
@@ -212,24 +236,71 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
     strcpy(path,previous);
 }
 
+/* check if there's no other file/dir with the same name */
+int doppelganger(DWORD cluster, char name[MAX_FILE_NAME_SIZE]){
+    DWORD entry = 0;
+    char candidate[MAX_FILE_NAME_SIZE];
+    int numOfSectors = 0;
+    while(numOfSectors < superblock->SectorsPerCluster){
+        if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart + numOfSectors), buffer) != 0){
+            return 1; //error
+        }
+        while(entry <= SECTOR_SIZE - sizeof(Record)){
+            strncpy(candidate,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
+            entry = entry + sizeof(Record);
+            if(strcmp(candidate,name) == 0){
+                return 1; //doppelganger detected
+            }
+        }
+        numOfSectors++;
+        entry = 0;
+    }
+    return 0; // neither file nor dir with this name;
+}
+
 FILE2 create2 (char *filename){
-    DWORD father, freeCluster;
+    DWORD parent, freeCluster, clusterValue = 0xFFFFFFFF;
+    Record newFile;
+    int freeEntry;
     char path[strlen(filename) + 1], name[MAX_FILE_NAME_SIZE];
     if(!InitializedDisk){
         t2fsInit();
     }
     extractPath(filename,path,name);
-    printf("filename: %s | path: %s | name: %s\n", filename, path, name);
-    father = validPath(path,'d');
-    printf("%hu\n", father);
-    if(father == 1){
+    //printf("filename: %s | path: %s | name: %s\n", filename, path, name);
+    parent = validPath(path,'d');
+    //printf("%hu\n", parent);
+    if(parent == 1){
+        return -1;
+    }
+    if(doppelganger(parent,name)){
         return -1;
     }
     freeCluster = firstFitFat();
-    printf("first free cluster: %d\n", freeCluster);
-    /*if(read_sector(freeCluster, buffer) != 0){
+    //printf("first free cluster: %d\n", freeCluster);
+    if(freeCluster == -1){
         return -1;
-    }*/
+    }
+    if(read_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
+        return -1;
+    }
+    if(read_sector((superblock->pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer) != 0){
+        return -1;
+    }
+
+    memcpy((buffer + (freeCluster-1)*4), &clusterValue,4);
+    write_sector((superblock->pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer);
+
+    newFile.TypeVal = TYPEVAL_REGULAR;
+    strcpy(newFile.name,name);
+    newFile.bytesFileSize = 0;
+    newFile.firstCluster = freeCluster;
+
+    freeEntry = unusedEntryDir(parent);
+
+    read_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
+    memcpy((buffer + ((int)floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))*sizeof(Record))), &newFile, sizeof(Record));
+    write_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
 
     return 0;
 }
