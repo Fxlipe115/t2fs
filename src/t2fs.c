@@ -17,55 +17,54 @@ typedef struct t2fs_superbloco sBlock;
 typedef struct t2fs_record Record;
 int *currentPointer;
 
-sBlock *superblock;
+sBlock superblock;
 
 int t2fsInit(){
     const char *temp;
     //Record parent, self, empty, block[4];
-    superblock = malloc(sizeof(sBlock));
     if((read_sector(0, buffer)) != 0){
         return -1;
     }
     temp = (char *) buffer;
-    strncpy(superblock->id, temp, 4);
-    if(strncmp(superblock->id, FSYSTEM_ID, 4) != 0){
+    strncpy(superblock.id, temp, 4);
+    if(strncmp(superblock.id, FSYSTEM_ID, 4) != 0){
         return -1;
     }
-    superblock->version = *((WORD *)(buffer + 4));
-    if(superblock->version != FSYSTEM_VERSION){
+    superblock.version = *((WORD *)(buffer + 4));
+    if(superblock.version != FSYSTEM_VERSION){
         return -1;
     }
 
-    superblock->SuperBlockSize = *((WORD *)(buffer + 6));
-    superblock->DiskSize = *((DWORD *)(buffer + 8));
-    superblock->NofSectors = *((DWORD *)(buffer + 12));
-    superblock->SectorsPerCluster = *((DWORD *)(buffer + 16));
-    superblock->pFATSectorStart = *((DWORD *)(buffer + 20));
-    superblock->RootDirCluster = *((DWORD *)(buffer + 24));
-    superblock->DataSectorStart = *((DWORD *)(buffer + 28));
+    superblock.SuperBlockSize = *((WORD *)(buffer + 6));
+    superblock.DiskSize = *((DWORD *)(buffer + 8));
+    superblock.NofSectors = *((DWORD *)(buffer + 12));
+    superblock.SectorsPerCluster = *((DWORD *)(buffer + 16));
+    superblock.pFATSectorStart = *((DWORD *)(buffer + 20));
+    superblock.RootDirCluster = *((DWORD *)(buffer + 24));
+    superblock.DataSectorStart = *((DWORD *)(buffer + 28));
 
-    printf("id: %s\n",superblock->id);
-    printf("versao: 0x%X\n",superblock->version);
-    printf("superBloco: %hu\n",superblock->SuperBlockSize);
-    printf("diskSize: %hu\n",superblock->DiskSize);
-    printf("nOfSectors: %hu\n",superblock->NofSectors);
-    printf("SectorsPerCluster: %hu\n",superblock->SectorsPerCluster);
-    printf("pFATSectorStart: %hu\n",superblock->pFATSectorStart);
-    printf("RootDirCluster: %hu\n",superblock->RootDirCluster);
-    printf("DataSectorStart: %hu\n",superblock->DataSectorStart);
+    printf("id: %s\n",superblock.id);
+    printf("versao: 0x%X\n",superblock.version);
+    printf("superBloco: %hu\n",superblock.SuperBlockSize);
+    printf("diskSize: %hu\n",superblock.DiskSize);
+    printf("nOfSectors: %hu\n",superblock.NofSectors);
+    printf("SectorsPerCluster: %hu\n",superblock.SectorsPerCluster);
+    printf("pFATSectorStart: %hu\n",superblock.pFATSectorStart);
+    printf("RootDirCluster: %hu\n",superblock.RootDirCluster);
+    printf("DataSectorStart: %hu\n",superblock.DataSectorStart);
 
-    currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster;
+    currentDir = superblock.DataSectorStart + superblock.RootDirCluster*superblock.SectorsPerCluster;
 
-    currentPointer = malloc((int)sizeof((int)(superblock->NofSectors - superblock->DataSectorStart)/superblock->SectorsPerCluster));
+    currentPointer = malloc((int)sizeof((int)(superblock.NofSectors - superblock.DataSectorStart)/superblock.SectorsPerCluster));
 
     /*self.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(self.name, ".");
-    self.bytesFileSize = superblock->SectorsPerCluster*SECTOR_SIZE;
+    self.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
     self.firstCluster = currentDir;
 
     parent.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(parent.name, "..");
-    parent.bytesFileSize = superblock->SectorsPerCluster*SECTOR_SIZE;
+    parent.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
     parent.firstCluster = currentDir;
 
     empty.TypeVal = TYPEVAL_INVALIDO;
@@ -90,31 +89,31 @@ DWORD validPath(char *filename, char fileType){
     DWORD entry = 0;
     char name[MAX_FILE_NAME_SIZE], auxName[lenght + 1], truncated[MAX_FILE_NAME_SIZE], previous[MAX_FILE_NAME_SIZE];
     char *safeCopy = filename;
-    DWORD cluster = (currentDir - superblock->DataSectorStart)/superblock->SectorsPerCluster;
+    DWORD cluster = (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
     strcpy(auxName, filename);
     if(strcmp(auxName, "/") == 0){
-        if(read_sector((superblock->RootDirCluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
+        if(read_sector((superblock.RootDirCluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
             return 1;
         } else {
-            if(fileType == 'd'){
-                return superblock->RootDirCluster; //Valid path: root
+            if(fileType == 'f'){
+                return superblock.RootDirCluster; //Valid path: root
             } else {
                 return 1;
             }
         }
     }
     if(*((BYTE*)filename) == '/'){
-        cluster = superblock->RootDirCluster;
+        cluster = superblock.RootDirCluster;
     }
     strcpy(truncated,(strtok(auxName,"/")));
-    if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
+    if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
         return 1;
     }
     entry = 0;
     while(strcmp(truncated,"") != 0){
         strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
         numOfSectors = 0;
-        while(numOfSectors < superblock->SectorsPerCluster){
+        while(numOfSectors < superblock.SectorsPerCluster){
             while(strcmp(truncated,name) != 0 && entry <= SECTOR_SIZE - sizeof(Record)){
                 entry = entry + sizeof(Record);
                 strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
@@ -124,8 +123,8 @@ DWORD validPath(char *filename, char fileType){
             }
             if(entry > SECTOR_SIZE - sizeof(Record)){
                 numOfSectors++;
-                if(numOfSectors < superblock->SectorsPerCluster){
-                    if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart + numOfSectors), buffer) != 0){
+                if(numOfSectors < superblock.SectorsPerCluster){
+                    if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart + numOfSectors), buffer) != 0){
                         return 1;
                     }
                     entry = 0;
@@ -143,7 +142,7 @@ DWORD validPath(char *filename, char fileType){
                 }
             }
             cluster = *((DWORD *)(buffer + entry + 1 + MAX_FILE_NAME_SIZE + 4));
-            if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
+            if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
                 return 1;
             }
             entry = 0;
@@ -155,7 +154,7 @@ DWORD validPath(char *filename, char fileType){
         if(safeCopy != NULL){
             strcpy(truncated,safeCopy);
         } else {
-             strcpy(truncated,"");
+            strcpy(truncated,"");
         }
     }
     if(fileType == 'd' && normalFile > 0){
@@ -166,8 +165,8 @@ DWORD validPath(char *filename, char fileType){
 
 
 DWORD firstFitFat(){
-    int sector = superblock->pFATSectorStart, entry = 0;;
-    while(sector < superblock->DataSectorStart){
+    int sector = superblock.pFATSectorStart, entry = 0;;
+    while(sector < superblock.DataSectorStart){
         if(read_sector(sector, buffer) != 0){
             return -1;
         }
@@ -188,8 +187,8 @@ int unusedEntryDir(DWORD cluster){
     DWORD entry = 0;
     char candidate[MAX_FILE_NAME_SIZE];
     int numOfSectors = 0;
-    while(numOfSectors < superblock->SectorsPerCluster){
-        if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart + numOfSectors), buffer) != 0){
+    while(numOfSectors < superblock.SectorsPerCluster){
+        if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart + numOfSectors), buffer) != 0){
             return -1;
         }
         while(entry <= SECTOR_SIZE - sizeof(Record)){
@@ -242,8 +241,8 @@ int doppelganger(DWORD cluster, char name[MAX_FILE_NAME_SIZE]){
     DWORD entry = 0;
     char candidate[MAX_FILE_NAME_SIZE];
     int numOfSectors = 0;
-    while(numOfSectors < superblock->SectorsPerCluster){
-        if(read_sector((cluster*superblock->SectorsPerCluster + superblock->DataSectorStart + numOfSectors), buffer) != 0){
+    while(numOfSectors < superblock.SectorsPerCluster){
+        if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart + numOfSectors), buffer) != 0){
             return 1; //error
         }
         while(entry <= SECTOR_SIZE - sizeof(Record)){
@@ -268,13 +267,17 @@ FILE2 create2 (char *filename){
         t2fsInit();
     }
     extractPath(filename,path,name);
-    printf("filename: %s | path: %s | name: %s\n", filename, path, name);
+    //printf("filename: %s | path: %s | name: %s\n", filename, path, name);
     parent = validPath(path,'d');
     //printf("%hu\n", parent);
     if(parent == 1){
-        return -1;
+        if(strcmp(name,path) != 0){
+            return -1;
+        }
+        parent = (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
     }
     if(doppelganger(parent,name)){
+        printf("DOPPELGANGER\n");
         return -1;
     }
     freeCluster = firstFitFat();
@@ -282,15 +285,15 @@ FILE2 create2 (char *filename){
     if(freeCluster == -1){
         return -1;
     }
-    if(read_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart), buffer) != 0){
+    if(read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
         return -1;
     }
-    if(read_sector((superblock->pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer) != 0){
+    if(read_sector((superblock.pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer) != 0){
         return -1;
     }
 
     memcpy((buffer + (freeCluster-1)*4), &clusterValue,4);
-    write_sector((superblock->pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer);
+    write_sector((superblock.pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer);
 
     newFile.TypeVal = TYPEVAL_REGULAR;
     strcpy(newFile.name,name);
@@ -299,9 +302,9 @@ FILE2 create2 (char *filename){
 
     freeEntry = unusedEntryDir(parent);
 
-    read_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
+    read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
     memcpy((buffer + ((int)floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))*sizeof(Record))), &newFile, sizeof(Record));
-    write_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
+    write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
 
     currentPointer[freeCluster] = 0; //set currentPointer of the file at handler index to 0;
     return freeCluster;
