@@ -169,7 +169,7 @@ DWORD firstFitFat(){
             return -1;
         }
         while(entry < SECTOR_SIZE/4){
-            if(*((DWORD *)buffer + entry) == 0x00000000){
+            if(*((DWORD *)(buffer + entry)) == 0x00000000){
                 return (sector-1)*SECTOR_SIZE + entry/4;
             }
             entry = entry + 4;
