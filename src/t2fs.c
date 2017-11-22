@@ -10,13 +10,12 @@
 
 int InitializedDisk = 0;
 unsigned char buffer[SECTOR_SIZE];
-int openFiles[10] = {-1};
+int openedFiles[10] = {-1};
 DWORD currentDir;
-unsigned int handle = 0;
-
 
 typedef struct t2fs_superbloco sBlock;
 typedef struct t2fs_record Record;
+int *currentPointer;
 
 sBlock *superblock;
 
@@ -56,6 +55,8 @@ int t2fsInit(){
     printf("DataSectorStart: %hu\n",superblock->DataSectorStart);
 
     currentDir = superblock->DataSectorStart + superblock->RootDirCluster*superblock->SectorsPerCluster;
+
+    currentPointer = malloc((int)sizeof((int)(superblock->NofSectors - superblock->DataSectorStart)/superblock->SectorsPerCluster));
 
     /*self.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(self.name, ".");
@@ -267,7 +268,7 @@ FILE2 create2 (char *filename){
         t2fsInit();
     }
     extractPath(filename,path,name);
-    //printf("filename: %s | path: %s | name: %s\n", filename, path, name);
+    printf("filename: %s | path: %s | name: %s\n", filename, path, name);
     parent = validPath(path,'d');
     //printf("%hu\n", parent);
     if(parent == 1){
@@ -302,7 +303,8 @@ FILE2 create2 (char *filename){
     memcpy((buffer + ((int)floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))*sizeof(Record))), &newFile, sizeof(Record));
     write_sector((parent*superblock->SectorsPerCluster + superblock->DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
 
-    return 0;
+    currentPointer[freeCluster] = 0; //set currentPointer of the file at handler index to 0;
+    return freeCluster;
 }
 
 
