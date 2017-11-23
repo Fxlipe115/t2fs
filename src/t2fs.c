@@ -9,8 +9,8 @@
 #define FSYSTEM_ID "T2FS"
 
 int InitializedDisk = 0;
-unsigned char buffer[SECTOR_SIZE];
-int openedFiles[10] = {-1};
+BYTE buffer[SECTOR_SIZE];
+FILE2 openedFiles[10] = {-1};
 DWORD currentDir;
 
 typedef struct t2fs_superbloco sBlock;
