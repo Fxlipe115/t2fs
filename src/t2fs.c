@@ -15,8 +15,8 @@ typedef enum {FILE_TYPE_DIRECTORY, FILE_TYPE_FILE} file_type_t;
 
 /*===== Global variables =====*/
 int InitializedDisk = 0;
-unsigned char buffer[SECTOR_SIZE];
-int openedFiles[10] = {-1};
+BYTE buffer[SECTOR_SIZE];
+FILE2 openedFiles[10] = {-1};
 DWORD currentDir;
 int *currentPointer;
 sBlock superblock;
