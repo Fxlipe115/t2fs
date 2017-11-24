@@ -29,7 +29,7 @@ int t2fsInit();
 
 /* This funtion check is a path is valid.
 Param 1: the path to be validated
-Param 2: the type (dir or regular file) of the last token, being equal to 'd' if looking for a dir, any other char if looking for a file.
+Param 2: the type (dir or regular file) of the last token, being equal to FILE_TYPE_DIRECTORY if looking for a dir or FILE_TYPE_FILE if looking for a file.
 Return: 1 if the path is not valid, the cluster number if it is */
 DWORD validPath(char *filename, file_type_t fileType);
 
