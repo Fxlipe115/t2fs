@@ -70,6 +70,7 @@ int identify2 (char *name, int size){
 FILE2 create2 (char *filename){
   DWORD parent, freeCluster, clusterValue = 0xFFFFFFFF;
   Record newFile;
+  BYTE flush[64] = {0};
   int freeEntry;
   char path[strlen(filename) + 1], name[MAX_FILE_NAME_SIZE];
   if(!InitializedDisk){
@@ -103,6 +104,8 @@ FILE2 create2 (char *filename){
   memcpy((buffer + (freeCluster-1)*4), &clusterValue,4);
   write_sector((superblock.pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer);
 
+  memcpy(&newFile, &flush, sizeof(Record));
+
   newFile.TypeVal = TYPEVAL_REGULAR;
   strcpy(newFile.name,name);
   newFile.bytesFileSize = 0;
@@ -121,7 +124,8 @@ FILE2 create2 (char *filename){
 
 int delete2 (char *filename){
   DWORD parent, clusterValue = 0x00000000;
-  Record deletedFile;
+  //Record deletedFile;
+  BYTE flush[64] = {0};
   int entry, sectorFat, nextCluster;
   char path[strlen(filename) + 1], name[MAX_FILE_NAME_SIZE];
   if(!InitializedDisk){
@@ -134,31 +138,38 @@ int delete2 (char *filename){
   if(parent == 1){
     return -1;
   }
+  if(strcmp(path, filename) == 0){
+    parent =  (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
+  }
+  printf("final parent: %hu\n", parent);
   entry = doppelganger(parent,name);
   printf("entry: %d\n", entry);
   if(read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer) != 0){
     return -1;
   }
-  deletedFile.TypeVal = TYPEVAL_INVALIDO;
-  strcpy(deletedFile.name,"");
-  deletedFile.bytesFileSize = 0;
-  deletedFile.firstCluster = 0;
+  //deletedFile.TypeVal = TYPEVAL_INVALIDO;
+  //strcpy(deletedFile.name,"");
+  //deletedFile.bytesFileSize = 0;
+  //deletedFile.firstCluster = 0;
 
   //sectorFat = *(DWORD *)(buffer + ((int)floor(entry/(SECTOR_SIZE/sizeof(Record)))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
   sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
   printf("sectorFat: %hu\n", sectorFat);
-  memcpy((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &deletedFile, sizeof(Record));
+  memcpy((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &flush, sizeof(Record));
   printf("where: %d\n", (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record))))));
   write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer);
-  currentPointer[sectorFat] = -1; //set currentPointer of the file at handler index to -1;
+  //currentPointer[sectorFat] = -1; //set currentPointer of the file at handler index to -1;
   do{
     if(read_sector((superblock.pFATSectorStart + (int)floor((double)sectorFat/SECTOR_SIZE)), buffer) != 0){
       return -1;
     }
-    nextCluster = *(DWORD *)(buffer + (sectorFat-1)*4);
-    memcpy((buffer + (sectorFat-1)*4), &clusterValue, 4);
+    //nextCluster = *(DWORD *)(buffer + (sectorFat-1)*4);
+    //memcpy((buffer + (sectorFat-1)*4), &clusterValue, 4);
+    nextCluster = *(DWORD *)(buffer + (sectorFat)*4);
+    memcpy((buffer + (sectorFat)*4), &clusterValue, 4);
     write_sector((superblock.pFATSectorStart + (int)floor((double)sectorFat/SECTOR_SIZE)), buffer);
     sectorFat = nextCluster;
+    printf("next cluster: %hu\n", nextCluster);
   }while(nextCluster != 0xFFFFFFFF);
   return 0;
 }
@@ -284,14 +295,11 @@ int t2fsInit(){
     strcpy(self.name, ".");
     self.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
     self.firstCluster = currentDir;
-
     parent.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(parent.name, "..");
     parent.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
     parent.firstCluster = currentDir;
-
     empty.TypeVal = TYPEVAL_INVALIDO;
-
     block[0] = self;
     block[1] = parent;
     block[2] = empty;
