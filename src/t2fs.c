@@ -59,6 +59,11 @@ Param 1: first cluster of the file
 Return: index of the file in the array or -1 if absent */
 int getFileIndex(FILE2 firstCluster);
 
+/* This function checks if a dir has any file on its entries
+Param 1: cluster of the dir
+Return: 1 if empty, 0 if has at least one file and -1 if an error occured */
+int isEmptyDir(DWORD cluster);
+
 /*===== Function implementations =====*/
 int identify2 (char *name, int size){
   int printSize, strSize;
@@ -233,13 +238,136 @@ int seek2 (FILE2 handle, unsigned int offset){
 
 
 int mkdir2 (char *pathname){
-  //TODO
+  DWORD parent, freeCluster, clusterValue = 0xFFFFFFFF;
+  Record father, self;
+  Record newFile;
+  BYTE flush[64] = {0};
+  int freeEntry, i, j;
+  char path[strlen(pathname) + 1], name[MAX_FILE_NAME_SIZE];
+  if(!InitializedDisk){
+    t2fsInit();
+  }
+  extractPath(pathname,path,name);
+  parent = validPath(path,'d');
+  if(parent == 1){
+    if(strcmp(name,path) != 0){
+      return -1;
+    }
+    parent = (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
+  }
+  if(doppelganger(parent,name) != 0){
+    return -1;
+  }
+  freeCluster = firstFitFat();
+  if(freeCluster == -1){
+    return -1;
+  }
+  if(read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
+    return -1;
+  }
+  if(read_sector((superblock.pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer) != 0){
+    return -1;
+  }
+
+  memcpy((buffer + (freeCluster)*4), &clusterValue,4);
+  write_sector((superblock.pFATSectorStart + (int)floor((double)freeCluster/SECTOR_SIZE)), buffer);
+
+  memcpy(&newFile, &flush, sizeof(Record));
+
+  newFile.TypeVal = TYPEVAL_DIRETORIO;
+  strcpy(newFile.name,name);
+  newFile.bytesFileSize = SECTOR_SIZE*superblock.SectorsPerCluster;
+  newFile.firstCluster = freeCluster;
+
+  freeEntry = unusedEntryDir(parent);
+
+  read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))), buffer);
+  memcpy((buffer + (freeEntry - superblock.SectorsPerCluster*((int)floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &newFile, sizeof(Record));
+  write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
+
+  for(j = 0; j < 4; j++){
+    if(read_sector((freeCluster*superblock.SectorsPerCluster + superblock.DataSectorStart + j), buffer) != 0){
+        return -1;
+    }
+    for(i = 0; i < superblock.SectorsPerCluster; i++){
+        memcpy(buffer + i*sizeof(Record), &flush, sizeof(Record));
+    }
+    write_sector((freeCluster*superblock.SectorsPerCluster + superblock.DataSectorStart + j), buffer);
+  }
+
+  if(read_sector((freeCluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
+    return -1;
+  }
+  memcpy(&self, &flush, sizeof(Record));
+  self.TypeVal = TYPEVAL_DIRETORIO;
+  strcpy(self.name, ".");
+  self.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
+  self.firstCluster = freeCluster;
+
+  memcpy(&father, &flush, sizeof(Record));
+  father.TypeVal = TYPEVAL_DIRETORIO;
+  strcpy(father.name, "..");
+  father.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
+  father.firstCluster = parent;
+
+  memcpy(buffer, &self, sizeof(Record));
+  memcpy((buffer + sizeof(Record)), &father, sizeof(Record));
+
+  write_sector((freeCluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer);
+
   return 0;
 }
 
 
 int rmdir2 (char *pathname){
-  //TODO
+  DWORD parent, clusterValue = 0x00000000, self;
+  BYTE flush[64] = {0};
+  int entry, sectorFat, nextCluster, i, j;
+  char path[strlen(pathname) + 1], name[MAX_FILE_NAME_SIZE];
+  if(!InitializedDisk){
+    t2fsInit();
+  }
+  if((self = validPath(pathname,'d')) == 1){
+    return -1;
+  }
+  if(!isEmptyDir(self)){
+    fprintf(stderr, "Cannot delete non empty dir!\n");
+    return -1;
+  }
+  extractPath(pathname,path,name);
+  parent = validPath(path,'d');
+  if(parent == 1){
+    return -1;
+  }
+  if(strcmp(path, pathname) == 0){
+    parent =  (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
+  }
+  entry = doppelganger(parent,name);
+  if(read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer) != 0){
+    return -1;
+  }
+
+  sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
+  memcpy((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &flush, sizeof(Record));
+  write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer);
+  do{
+    for(j = 0; j < 4; j++){
+        if(read_sector((sectorFat*superblock.SectorsPerCluster + superblock.DataSectorStart + j), buffer) != 0){
+            return -1;
+        }
+        for(i = 0; i < superblock.SectorsPerCluster; i++){
+            memcpy(buffer + i*sizeof(Record), &flush, sizeof(Record));
+        }
+        write_sector((sectorFat*superblock.SectorsPerCluster + superblock.DataSectorStart + j), buffer);
+    }
+    if(read_sector((superblock.pFATSectorStart + (int)floor((double)sectorFat/SECTOR_SIZE)), buffer) != 0){
+      return -1;
+    }
+    nextCluster = *(DWORD *)(buffer + (sectorFat)*4);
+    memcpy((buffer + (sectorFat)*4), &clusterValue, 4);
+    write_sector((superblock.pFATSectorStart + (int)floor((double)sectorFat/SECTOR_SIZE)), buffer);
+    sectorFat = nextCluster;
+  }while(nextCluster != 0xFFFFFFFF);
   return 0;
 }
 
@@ -519,4 +647,23 @@ int getFileIndex(FILE2 firstCluster){
         }
     }
     return -1;
+}
+
+int isEmptyDir(DWORD cluster){
+    char name[MAX_FILE_NAME_SIZE];
+    int i, j;
+    for(i = 0; i < superblock.SectorsPerCluster; i++){
+        if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart + i), buffer) != 0){
+            return -1; //error
+        }
+        for(j = 0; (j < SECTOR_SIZE/sizeof(Record)); j++){
+            strncpy(name, (char *)(buffer + 1 + j*sizeof(Record)), MAX_FILE_NAME_SIZE);
+            if(name != NULL){
+                if(strcmp(name, "") != 0 && strcmp(name, ".") != 0 && strcmp(name, "..") != 0){
+                    return 0;
+                }
+            }
+        }
+    }
+   return 1;
 }

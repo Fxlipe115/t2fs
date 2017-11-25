@@ -14,6 +14,11 @@ int main(){
     delete2("./file1.txt");
     close2(handle);
     delete2("/file1.txt");
-    create2("fileTeste.txt");
+    create2("fileTeste1.txt");
+    mkdir2("/dir1/jujubs");
+    create2("./dir1/jujubs/fileTesteJ.txt");
+    rmdir2("/dir1/jujubs");
+    delete2("./dir1/jujubs/fileTesteJ.txt");
+    rmdir2("/dir1/jujubs");
     return 0;
 }
