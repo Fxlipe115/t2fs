@@ -126,7 +126,7 @@ int delete2 (char *filename){
   DWORD parent, clusterValue = 0x00000000;
   //Record deletedFile;
   BYTE flush[64] = {0};
-  int entry, sectorFat, nextCluster;
+  int entry, sectorFat, nextCluster, i, j;
   char path[strlen(filename) + 1], name[MAX_FILE_NAME_SIZE];
   if(!InitializedDisk){
     t2fsInit();
@@ -160,6 +160,17 @@ int delete2 (char *filename){
   write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer);
   //currentPointer[sectorFat] = -1; //set currentPointer of the file at handler index to -1;
   do{
+    //for(i = 0; i < (superblock.SectorsPerCluster*(SECTOR_SIZE/sizeof(Record))); i++){
+      //  printf("max: %d | i: %d\n", (superblock.SectorsPerCluster*(SECTOR_SIZE/sizeof(Record))), i);
+    for(j = 0; j < 4; j++){
+        if(read_sector((sectorFat*superblock.SectorsPerCluster + superblock.DataSectorStart + j), buffer) != 0){
+            return -1;
+        }
+        for(i = 0; i < superblock.SectorsPerCluster; i++){
+            memcpy(buffer + i*sizeof(Record), &flush, sizeof(Record));
+        }
+        write_sector((sectorFat*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer);
+    }
     if(read_sector((superblock.pFATSectorStart + (int)floor((double)sectorFat/SECTOR_SIZE)), buffer) != 0){
       return -1;
     }
