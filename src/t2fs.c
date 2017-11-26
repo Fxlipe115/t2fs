@@ -258,12 +258,10 @@ int mkdir2 (char *pathname){
     }
     parent = (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
   }
-  printf("dir parent: %d\n",parent);
   if(doppelganger(parent,name) != 0){
     return -1;
   }
   freeCluster = firstFitFat();
-  printf("cluster: %d\n",freeCluster);
   if(freeCluster == -1){
     return -1;
   }
@@ -285,7 +283,6 @@ int mkdir2 (char *pathname){
   newFile.firstCluster = freeCluster;
 
   freeEntry = unusedEntryDir(parent);
-  printf("free entry: %d\n",freeEntry);
 
   read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))), buffer);
   memcpy((buffer + (freeEntry - superblock.SectorsPerCluster*((int)floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &newFile, sizeof(Record));
@@ -327,7 +324,7 @@ int mkdir2 (char *pathname){
 
 int rmdir2 (char *pathname){
   DWORD parent, clusterValue = 0x00000000, self;
-  BYTE flush[64] = {0};
+  BYTE flush[64] = {0}, typeVal;
   int entry, sectorFat, nextCluster, i, j;
   char path[strlen(pathname) + 1], name[MAX_FILE_NAME_SIZE];
   if(!InitializedDisk){
@@ -352,8 +349,15 @@ int rmdir2 (char *pathname){
   if(read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer) != 0){
     return -1;
   }
+  typeVal = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)));
+  if(typeVal != TYPEVAL_DIRETORIO){
+    return -1;
+  }
 
   sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
+  if(currentDir == superblock.DataSectorStart + sectorFat*superblock.SectorsPerCluster){
+    currentDir = superblock.DataSectorStart + superblock.RootDirCluster*superblock.SectorsPerCluster;
+  }
   memcpy((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &flush, sizeof(Record));
   write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer);
   do{
@@ -379,7 +383,35 @@ int rmdir2 (char *pathname){
 
 
 int chdir2 (char *pathname){
-  //TODO
+  DWORD parent, self;
+  BYTE typeVal;
+  int entry, sectorFat;
+  char path[strlen(pathname) + 1], name[MAX_FILE_NAME_SIZE];
+  if(!InitializedDisk){
+    t2fsInit();
+  }
+  if((self = validPath(pathname,'d')) == 1){
+    return -1;
+  }
+  extractPath(pathname,path,name);
+  parent = validPath(path,'d');
+  if(parent == 1){
+    return -1;
+  }
+  if(strcmp(path, pathname) == 0){
+    parent =  (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
+  }
+  entry = doppelganger(parent,name);
+  if(read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(entry/(SECTOR_SIZE/sizeof(Record)))), buffer) != 0){
+    return -1;
+  }
+  typeVal = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)));
+  if(typeVal != TYPEVAL_DIRETORIO){
+    fprintf(stderr, "The current dir cannot be a regular file!\n");
+    return -1;
+  }
+  sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
+  currentDir = superblock.DataSectorStart + sectorFat*superblock.SectorsPerCluster;
   return 0;
 }
 
@@ -606,7 +638,7 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
         strcpy(verify, "/");
         strcat(verify,safeCopy);
         if(strcmp(filename,safeCopy) == 0 || strcmp(filename,verify) == 0){
-            strcpy(previous,"/");
+            strcpy(previous,"./");
             strcpy(name,safeCopy);
             endOfPath = 1;
         } else {
@@ -629,7 +661,7 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
         }
     }
     strcpy(path,previous);
-    printf("name: %s | path: %s | filename: %s\n", name, path,filename);
+    //printf("name: %s | path: %s | filename: %s\n", name, path,filename);
 }
 
 
