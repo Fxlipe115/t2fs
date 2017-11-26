@@ -20,5 +20,8 @@ int main(){
     rmdir2("/dir1/jujubs");
     delete2("./dir1/jujubs/fileTesteJ.txt");
     rmdir2("/dir1/jujubs");
+    mkdir2("/jujubs2");
+    rmdir2("batata/dir1");
+    rmdir2("/jujubs2");
     return 0;
 }

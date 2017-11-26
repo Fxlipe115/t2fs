@@ -204,6 +204,9 @@ FILE2 open2 (char *filename){
 
 int close2 (FILE2 handle){
   int index;
+  if(!InitializedDisk){
+    t2fsInit();
+  }
   index = getFileIndex(handle);
   if(index == -1){
     return -1;
@@ -255,10 +258,12 @@ int mkdir2 (char *pathname){
     }
     parent = (currentDir - superblock.DataSectorStart)/superblock.SectorsPerCluster;
   }
+  printf("dir parent: %d\n",parent);
   if(doppelganger(parent,name) != 0){
     return -1;
   }
   freeCluster = firstFitFat();
+  printf("cluster: %d\n",freeCluster);
   if(freeCluster == -1){
     return -1;
   }
@@ -280,6 +285,7 @@ int mkdir2 (char *pathname){
   newFile.firstCluster = freeCluster;
 
   freeEntry = unusedEntryDir(parent);
+  printf("free entry: %d\n",freeEntry);
 
   read_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))), buffer);
   memcpy((buffer + (freeEntry - superblock.SectorsPerCluster*((int)floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &newFile, sizeof(Record));
@@ -474,11 +480,11 @@ DWORD validPath(char *filename, file_type_t fileType){
         if(read_sector((superblock.RootDirCluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
             return 1;
         } else {
-            if(fileType == FILE_TYPE_FILE){
-                return superblock.RootDirCluster; //Valid path: root
-            } else {
-                return 1;
-            }
+            //if(fileType == FILE_TYPE_FILE){
+            return superblock.RootDirCluster; //Valid path: root
+            //} else {
+              //  return 1;
+           // }
         }
     }
     if(*((BYTE*)filename) == '/'){
@@ -587,7 +593,7 @@ int unusedEntryDir(DWORD cluster){
 
 
 void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
-    char auxName[strlen(filename) + 1], *safeCopy = filename, previous[strlen(filename) + 1];
+    char auxName[strlen(filename) + 1], *safeCopy = filename, previous[strlen(filename) + 1], verify[strlen(filename) + 1];
     int endOfPath = 0;
     if(*((BYTE*)filename) == '/'){
         strcpy(path,"/");
@@ -597,9 +603,17 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
     strcpy(auxName, filename);
     safeCopy = strtok(auxName,"/");
     if(safeCopy != NULL){
-        strcat(path,safeCopy);
-        strcpy(previous,path);
-        strcpy(name,safeCopy);
+        strcpy(verify, "/");
+        strcat(verify,safeCopy);
+        if(strcmp(filename,safeCopy) == 0 || strcmp(filename,verify) == 0){
+            strcpy(previous,"/");
+            strcpy(name,safeCopy);
+            endOfPath = 1;
+        } else {
+            strcat(path,safeCopy);
+            strcpy(previous,path);
+            strcpy(name,safeCopy);
+        }
     } else {
         endOfPath = 1;
     }
@@ -615,6 +629,7 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
         }
     }
     strcpy(path,previous);
+    printf("name: %s | path: %s | filename: %s\n", name, path,filename);
 }
 
 
