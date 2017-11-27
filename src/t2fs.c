@@ -19,8 +19,8 @@ int InitializedDisk = 0;
 BYTE buffer[SECTOR_SIZE];
 FILE2 openedFiles[10] = {0};
 DWORD currentDir;
-//char *nominalPath;
-char nominalPath[100*MAX_FILE_NAME_SIZE];
+char *nominalPath;
+//char nominalPath[100*MAX_FILE_NAME_SIZE];
 int *currentPointer;
 sBlock superblock;
 
@@ -421,6 +421,8 @@ int chdir2 (char *pathname){
   sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
   currentDir = superblock.DataSectorStart + sectorFat*superblock.SectorsPerCluster;
   //printf("ready to truncate: %s | %s\n", nominalPath, pathname);
+  free(nominalPath);
+  nominalPath = malloc(sizeof(char)*strlen(pathname) + 5);
   truncateAndConcat(pathname);
   //printf("aqui\n");
   //free(nominalPath);
@@ -508,6 +510,7 @@ int t2fsInit(){
     //strcpy(nominalPath,"/");
     //nominalPath[0] = '/';
     //nominalPath[1] = '\0';
+    nominalPath = malloc(sizeof(char)*10);
     strcpy(nominalPath,"/");
     //printf("foi\n");
     /*self.TypeVal = TYPEVAL_DIRETORIO;
