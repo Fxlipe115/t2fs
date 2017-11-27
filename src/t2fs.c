@@ -73,11 +73,15 @@ or truncate nominalPath and remove the "../ ./" part of newPath to concatenate t
 Param 1: new path (relative)*/
 void truncateAndConcat(char newPath[]);
 
+<<<<<<< Updated upstream
 /*
 Param 2: old path (absolute)
 Param 3: 'g' for ignoring the second parameter and use the global nominalPath, any other thing if you want o use param 2
 void truncateAndConcat(char newPath[], char *pathname, char purpose);
 */
+=======
+
+>>>>>>> Stashed changes
 /*===== Function implementations =====*/
 int identify2 (char *name, int size){
   int printSize, strSize;
@@ -101,7 +105,7 @@ FILE2 create2 (char *filename){
     t2fsInit();
   }
   extractPath(filename,path,name);
-  parent = validPath(path,'d');
+  parent = validPath(path,FILE_TYPE_DIRECTORY);
   if(parent == 1){
     if(strcmp(name,path) != 0){
       return -1;
@@ -151,7 +155,7 @@ int delete2 (char *filename){
   if(!InitializedDisk){
     t2fsInit();
   }
-  if((self = validPath(filename,'f')) == 1){
+  if((self = validPath(filename,FILE_TYPE_FILE)) == 1){
     return -1;
   }
   if(getFileIndex(self) != -1){
@@ -159,7 +163,7 @@ int delete2 (char *filename){
     return -1;
   }
   extractPath(filename,path,name);
-  parent = validPath(path,'d');
+  parent = validPath(path,FILE_TYPE_DIRECTORY);
   if(parent == 1){
     return -1;
   }
@@ -202,7 +206,7 @@ FILE2 open2 (char *filename){
   if(!InitializedDisk){
     t2fsInit();
   }
-  fileCluster = validPath(filename,'f');;
+  fileCluster = validPath(filename, FILE_TYPE_FILE);
   if(fileCluster == 1){
       return -1;
   }
@@ -231,7 +235,16 @@ int close2 (FILE2 handle){
 
 
 int read2 (FILE2 handle, char *buffer, int size){
-  //TODO
+  if(!InitializedDisk){
+    t2fsInit();
+  }
+
+  int index = getFileIndex(handle);
+  if(index == -1){
+    return -1;
+  }
+  FILE2 file = openedFiles[index];
+
   return 0;
 }
 
@@ -265,7 +278,7 @@ int mkdir2 (char *pathname){
     t2fsInit();
   }
   extractPath(pathname,path,name);
-  parent = validPath(path,'d');
+  parent = validPath(path,FILE_TYPE_DIRECTORY);
   if(parent == 1){
     if(strcmp(name,path) != 0){
       return -1;
@@ -344,7 +357,7 @@ int rmdir2 (char *pathname){
   if(!InitializedDisk){
     t2fsInit();
   }
-  if((self = validPath(pathname,'d')) == 1){
+  if((self = validPath(pathname,FILE_TYPE_DIRECTORY)) == 1){
     return -1;
   }
   if(!isEmptyDir(self)){
@@ -352,7 +365,7 @@ int rmdir2 (char *pathname){
     return -1;
   }
   extractPath(pathname,path,name);
-  parent = validPath(path,'d');
+  parent = validPath(path,FILE_TYPE_DIRECTORY);
   if(parent == 1){
     return -1;
   }
@@ -405,11 +418,11 @@ int chdir2 (char *pathname){
     t2fsInit();
   }
   //printf("started chdir: %s | %s\n", nominalPath, pathname);
-  if((self = validPath(pathname,'d')) == 1){
+  if((self = validPath(pathname,FILE_TYPE_DIRECTORY)) == 1){
     return -1;
   }
   extractPath(pathname,path,name);
-  parent = validPath(path,'d');
+  parent = validPath(path,FILE_TYPE_DIRECTORY);
   if(parent == 1){
     return -1;
   }
@@ -468,8 +481,8 @@ DIR2 opendir2 (char *pathname){
   //strcpy(nominalPathAux,nominalPath);
   //printf("pathname antes: %s | %s\n", pathname, nominalPathAux);
   //truncateAndConcat(pathNameAux, pathNameAux, 'n');
-  //if((self = validPath(nominalPathAux,'d')) == 1){
-  if((self = validPath(pathname,'d')) == 1){
+  //if((self = validPath(nominalPathAux,FILE_TYPE_DIRECTORY)) == 1){
+  if((self = validPath(pathname,FILE_TYPE_DIRECTORY)) == 1){
     return -1;
   }
   openedDir = self;
@@ -615,7 +628,7 @@ DWORD validPath(char *filename, file_type_t fileType){
             if(*((BYTE *)(buffer + entry)) == TYPEVAL_REGULAR){
                 normalFile++;
                 if(normalFile > 1){
-                    return 1;//Invalid path, only one normal type file per path (none if fileType = 'd'
+                    return 1;//Invalid path, only one normal type file per path (none if fileType = FILE_TYPE_DIRECTORY)
                 }
             }
             cluster = *((DWORD *)(buffer + entry + 1 + MAX_FILE_NAME_SIZE + 4));
