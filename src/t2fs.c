@@ -73,15 +73,12 @@ or truncate nominalPath and remove the "../ ./" part of newPath to concatenate t
 Param 1: new path (relative)*/
 void truncateAndConcat(char newPath[]);
 
-<<<<<<< Updated upstream
-/*
-Param 2: old path (absolute)
-Param 3: 'g' for ignoring the second parameter and use the global nominalPath, any other thing if you want o use param 2
-void truncateAndConcat(char newPath[], char *pathname, char purpose);
-*/
-=======
+/* Gives the value of a FAT entry.
+cluster: associated cluster
+return: value of cluster's correspondent FAT entry*/
+DWORD getFatValue(DWORD cluster);
 
->>>>>>> Stashed changes
+
 /*===== Function implementations =====*/
 int identify2 (char *name, int size){
   int printSize, strSize;
@@ -239,11 +236,14 @@ int read2 (FILE2 handle, char *buffer, int size){
     t2fsInit();
   }
 
-  int index = getFileIndex(handle);
-  if(index == -1){
+  if(getFileIndex(handle) == -1){
     return -1;
   }
-  FILE2 file = openedFiles[index];
+
+  int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+  DWORD fatCode = getFatValue(handle);
+
+
 
   return 0;
 }
@@ -759,6 +759,7 @@ int doppelganger(DWORD cluster, char name[MAX_FILE_NAME_SIZE]){
     return 0; // neither file nor dir with this name;
 }
 
+
 int getFileIndex(FILE2 firstCluster){
     int i;
     for(i = 0; i < MAX_OPENED_FILES; i++){
@@ -768,6 +769,7 @@ int getFileIndex(FILE2 firstCluster){
     }
     return -1;
 }
+
 
 int isEmptyDir(DWORD cluster){
     char name[MAX_FILE_NAME_SIZE];
@@ -787,6 +789,7 @@ int isEmptyDir(DWORD cluster){
     }
    return 1;
 }
+
 
 //void truncateAndConcat(char newPath[], char *pathname, char purpose){
 void truncateAndConcat(char newPath[]){
@@ -875,4 +878,14 @@ void truncateAndConcat(char newPath[]){
         }
     }*/
     //printf("nominalPath: %s\n", nominalPath);
+}
+
+
+DWORD getFatValue(DWORD cluster){
+  DWORD fatStart = superblock.pFATSectorStart;
+  int fatSector = fatStart + (cluster / SECTOR_SIZE);
+  int fatIndex = cluster % SECTOR_SIZE;
+  unsigned char sector[SECTOR_SIZE];
+  read_sector(fatSector, sector);
+  return *(DWORD*)&sector[fatIndex * sizeof(DWORD)];
 }
