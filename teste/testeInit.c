@@ -1,8 +1,12 @@
 #include "t2fs.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 int main(){
     //int handle;
-    //char *pathname = "";
+    char *pathname;
+    pathname = malloc(100);
     /*create2("dir1/file4.txt");
     create2("/dir1/file3.txt");
     create2("../dir1/file7.txt");
@@ -17,7 +21,8 @@ int main(){
     delete2("/file1.txt");
     create2("fileTeste1.txt");*/
     mkdir2("/dir1/jujubs");
-    //getcwd2(pathname, 100);
+    getcwd2(pathname, 100);
+    printf("primeiro: %s\n", pathname);
     //create2("./dir1/jujubs/fileTesteJ.txt");
     //rmdir2("/dir1/jujubs");
     //delete2("./dir1/jujubs/fileTesteJ.txt");
@@ -26,12 +31,16 @@ int main(){
     //rmdir2("batata/dir1");
     //chdir2("chuchu");
     chdir2("dir1/jujubs");
-    //getcwd2(pathname, 100);
+    getcwd2(pathname, 100);
+    printf("segundo: %s\n", pathname);
     //create2("criaEmJu.txt");
     //rmdir2("/jujubs2");
     //delete2("criaEmJu.txt");
     //rmdir2("/jujubs2");
     chdir2("../../jujubs2");
-    //getcwd2(pathname, 100);
+    getcwd2(pathname, 100);
+    printf("terceiro: %s\n", pathname);
+    identify2(pathname,80);
+    printf("identify: %s\n", pathname);
     return 0;
 }

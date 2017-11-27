@@ -420,7 +420,7 @@ int chdir2 (char *pathname){
   }
   sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
   currentDir = superblock.DataSectorStart + sectorFat*superblock.SectorsPerCluster;
-  printf("ready to truncate: %s | %s\n", nominalPath, pathname);
+  //printf("ready to truncate: %s | %s\n", nominalPath, pathname);
   truncateAndConcat(pathname);
   //printf("aqui\n");
   //free(nominalPath);
@@ -433,16 +433,16 @@ int chdir2 (char *pathname){
 
 
 int getcwd2 (char *pathname, int size){
- /* int nominalPathSize, strSize;
-  nominalPathSize = snprintf(pathname,size,"%s",nominalPath);
-  strSize = strlen(pathname);
-  printf("path is: %s\n", pathname);
-  if(nominalPathSize < size){
+  int nominalPathSize, strSize;
+  nominalPathSize = strlen(pathname);
+  if(nominalPathSize > size){
     return -1;
   }
-  if(nominalPathSize == strSize){
+  snprintf(pathname,size,"%s",nominalPath);
+  strSize = strlen(pathname);
+  if(strSize <= size){
     return 0;
-  }*/
+  }
   return -1;
 }
 
@@ -748,12 +748,12 @@ int isEmptyDir(DWORD cluster){
 }
 
 void truncateAndConcat(char newPath[]){
-    char auxPath[strlen(nominalPath) + 1], auxNewPath[strlen(newPath) + 1], *safeCopy = newPath, *safeCopy2 = nominalPath, previous[strlen(newPath) + 1], previous2[strlen(nominalPath) + 1], *aux = nominalPath, *auxNew = newPath, intermed[strlen(newPath) + 1];
+    char auxPath[strlen(nominalPath) + 1], auxNewPath[strlen(newPath) + 1], *safeCopy = newPath, *safeCopy2 = nominalPath, previous[strlen(newPath) + 1], previous2[strlen(nominalPath) + 1], *auxNew = newPath, intermed[strlen(newPath) + 1];
     char *endNew, *endPath;
     int truncatedBytes = 0;
     if(*((BYTE*)newPath) == '/'){
         strcpy(nominalPath,newPath);
-        printf("caso1\n");
+        //printf("caso1\n");
     } else {
         //printf("caso2\n");
         strcpy(previous, newPath);
@@ -790,5 +790,5 @@ void truncateAndConcat(char newPath[]){
         }
         strcat(nominalPath,intermed);
     }
-    printf("nominalPath: %s\n", nominalPath);
+    //printf("nominalPath: %s\n", nominalPath);
 }
