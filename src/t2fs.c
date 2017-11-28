@@ -25,7 +25,6 @@ FILE2 openedFiles[10] = {0};
 DWORD currentDir;
 DWORD openedDir;
 char *nominalPath;
-//char nominalPath[100*MAX_FILE_NAME_SIZE];
 int *currentPointer;
 int currentEntry;
 sBlock superblock;
@@ -72,7 +71,7 @@ Param 1: cluster of the dir
 Return: 1 if empty, 0 if has at least one file and -1 if an error occured */
 int isEmptyDir(DWORD cluster);
 
-/* This function copy newPath to nominalPath if newPath is a absolute path,
+/* This function copy newPath to nominalPath if newPath is an absolute path,
 or truncate nominalPath and remove the "../ ./" part of newPath to concatenate them if newPath is relative
 Param 1: new path (relative)*/
 void truncateAndConcat(char newPath[]);
@@ -527,7 +526,6 @@ int chdir2 (char *pathname){
   if(!InitializedDisk){
     t2fsInit();
   }
-  //printf("started chdir: %s | %s\n", nominalPath, pathname);
   if((self = validPath(pathname,FILE_TYPE_DIRECTORY)) == 1){
     return -1;
   }
@@ -550,17 +548,9 @@ int chdir2 (char *pathname){
   }
   sectorFat = *(DWORD *)((buffer + (entry - superblock.SectorsPerCluster*((int)floor((entry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)) +  1 + MAX_FILE_NAME_SIZE + sizeof(DWORD));
   currentDir = superblock.DataSectorStart + sectorFat*superblock.SectorsPerCluster;
-  //printf("ready to truncate: %s | %s\n", nominalPath, pathname);
   free(nominalPath);
   nominalPath = malloc(sizeof(char)*strlen(pathname) + 5);
-  //truncateAndConcat(pathname, "using nominalPath", 'g');
   truncateAndConcat(pathname);
-  //printf("aqui\n");
-  //free(nominalPath);
-  //nominalPath = NULL;
-  //nominalPath = (char *)malloc(sizeof(char)*(strlen(pathname) + 1));
-  //nominalPath = realloc(nominalPath,(strlen(pathname)));
-  //nominalPath = pathname;
   return 0;
 }
 
@@ -582,23 +572,14 @@ int getcwd2 (char *pathname, int size){
 
 DIR2 opendir2 (char *pathname){
   DWORD parent, self;
-  //char pathNameAux[(strlen(pathname))], *nominalPathAux;
   if(!InitializedDisk){
     t2fsInit();
   }
-  //nominalPathAux = malloc(strlen(nominalPath) + strlen(pathname));
-  //strcpy(pathNameAux, pathname);
-  //strcpy(nominalPathAux,nominalPath);
-  //printf("pathname antes: %s | %s\n", pathname, nominalPathAux);
-  //truncateAndConcat(pathNameAux, pathNameAux, 'n');
-  //if((self = validPath(nominalPathAux,FILE_TYPE_DIRECTORY)) == 1){
   if((self = validPath(pathname,FILE_TYPE_DIRECTORY)) == 1){
     return -1;
   }
   openedDir = self;
   currentEntry = 0;
-  //printf("pathname: %s | cluster: %hu\n", nominalPathAux, openedDir);
-  //printf("cluster: %hu\n",openedDir);
   return openedDir;
 }
 
@@ -617,7 +598,6 @@ int closedir2 (DIR2 handle){
 
 int t2fsInit(){
     const char *temp;
-    //Record parent, self, empty, block[4];
     if((read_sector(0, buffer)) != 0){
         return -1;
     }
@@ -653,31 +633,8 @@ int t2fsInit(){
 
     currentPointer = malloc((int)sizeof(int)*((superblock.NofSectors - superblock.DataSectorStart)/superblock.SectorsPerCluster));
 
-    //nominalPath = malloc(sizeof(char)*(strlen("/") + 1));
-    //printf("ok\n");
-    //strcpy(nominalPath,"/");
-    //nominalPath[0] = '/';
-    //nominalPath[1] = '\0';
     nominalPath = malloc(sizeof(char)*10);
     strcpy(nominalPath,"/");
-    //printf("foi\n");
-    /*self.TypeVal = TYPEVAL_DIRETORIO;
-    strcpy(self.name, ".");
-    self.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
-    self.firstCluster = currentDir;
-    parent.TypeVal = TYPEVAL_DIRETORIO;
-    strcpy(parent.name, "..");
-    parent.bytesFileSize = superblock.SectorsPerCluster*SECTOR_SIZE;
-    parent.firstCluster = currentDir;
-    empty.TypeVal = TYPEVAL_INVALIDO;
-    block[0] = self;
-    block[1] = parent;
-    block[2] = empty;
-    block[3] = empty;
-    memcpy(buffer,block,SECTOR_SIZE);
-    if(write_sector(currentDir,buffer) != 0){
-        return -1;
-    }*/
     InitializedDisk = 1;
     return 0;
 }
@@ -695,11 +652,7 @@ DWORD validPath(char *filename, file_type_t fileType){
         if(read_sector((superblock.RootDirCluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
             return 1;
         } else {
-            //if(fileType == FILE_TYPE_FILE){
             return superblock.RootDirCluster; //Valid path: root
-            //} else {
-              //  return 1;
-           // }
         }
     }
     if(*((BYTE*)filename) == '/'){
@@ -844,7 +797,6 @@ void extractPath(char *filename, char path[], char name[MAX_FILE_NAME_SIZE]){
         }
     }
     strcpy(path,previous);
-    //printf("name: %s | path: %s | filename: %s\n", name, path,filename);
 }
 
 
@@ -901,29 +853,21 @@ int isEmptyDir(DWORD cluster){
 }
 
 
-//void truncateAndConcat(char newPath[], char *pathname, char purpose){
 void truncateAndConcat(char newPath[]){
     char auxPath[strlen(nominalPath) + 1], auxNewPath[strlen(newPath) + 1], *safeCopy = newPath, *safeCopy2 = nominalPath, previous[strlen(newPath) + 1], previous2[strlen(nominalPath) + 1], *auxNew = newPath, intermed[strlen(newPath) + 1];
     char *endNew, *endPath;
     int truncatedBytes = 0;
-    //if(purpose == 'g'){
     if(*((BYTE*)newPath) == '/'){
         strcpy(nominalPath,newPath);
-        //printf("caso1\n");
     } else {
-        //printf("caso2\n");
         strcpy(previous, newPath);
-        //safeCopy = strtok(newPath,"/");
         strcpy(auxNewPath, newPath);
         safeCopy = strtok_r(auxNewPath, "/", &endNew);
-        //printf("passou 1\n");
         while((safeCopy != NULL) && ((strcmp(safeCopy,".") == 0) || (strcmp(safeCopy,"..") == 0))){
-            //strcat(previous,safeCopy);
             if((strcmp(safeCopy,"..") == 0)){
                 truncatedBytes = truncatedBytes + 3;
                 strcpy(auxPath, "");
                 safeCopy2 = strtok_r(nominalPath, "/", &endPath);
-                //printf("passou 4\n");
                 while(safeCopy2 != NULL){
                     strcpy(previous2, auxPath);
                     strcat(auxPath,safeCopy2);
@@ -933,7 +877,6 @@ void truncateAndConcat(char newPath[]){
                 strcpy(nominalPath, previous2);
             } else {
                 if((strcmp(safeCopy,".") == 0)){
-                    //strcpy(newPath, (newPath+2));
                     truncatedBytes = truncatedBytes + 2;
                 }
             }
@@ -946,48 +889,6 @@ void truncateAndConcat(char newPath[]){
         }
         strcat(nominalPath,intermed);
     }
-   /* } else {
-        if(*((BYTE*)newPath) == '/'){
-            strcpy(pathname,newPath);
-            //printf("caso1\n");
-        } else {
-            //printf("caso2\n");
-            strcpy(previous, newPath);
-            //safeCopy = strtok(newPath,"/");
-            strcpy(auxNewPath, newPath);
-            safeCopy = strtok_r(auxNewPath, "/", &endNew);
-            //printf("passou 1\n");
-            while((safeCopy != NULL) && ((strcmp(safeCopy,".") == 0) || (strcmp(safeCopy,"..") == 0))){
-                //strcat(previous,safeCopy);
-                if((strcmp(safeCopy,"..") == 0)){
-                    truncatedBytes = truncatedBytes + 3;
-                    strcpy(auxPath, "");
-                    safeCopy2 = strtok_r(pathname, "/", &endPath);
-                    //printf("passou 4\n");
-                    while(safeCopy2 != NULL){
-                        strcpy(previous2, auxPath);
-                        strcat(auxPath,safeCopy2);
-                        strcat(auxPath,"/");
-                        safeCopy2 = strtok_r(NULL, "/", &endPath);
-                    }
-                    strcpy(pathname, previous2);
-                } else {
-                    if((strcmp(safeCopy,".") == 0)){
-                        //strcpy(newPath, (newPath+2));
-                        truncatedBytes = truncatedBytes + 2;
-                    }
-                }
-                strcpy(previous, auxNew);
-                safeCopy = strtok_r(NULL, "/", &endNew);
-            }
-            strncpy(intermed, (newPath + truncatedBytes), (MAX_FILE_NAME_SIZE - truncatedBytes));
-            if(strcmp(pathname,"") == 0){
-                strcpy(pathname,"/");
-            }
-            strcat(pathname,intermed);
-        }
-    }*/
-    //printf("nominalPath: %s\n", nominalPath);
 }
 
 
