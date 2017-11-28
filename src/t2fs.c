@@ -219,12 +219,10 @@ FILE2 open2 (char *filename){
     t2fsInit();
   }
   fileCluster = validPath(filename, FILE_TYPE_FILE);
-  printf("%s - %d - filecluster\n", filename, fileCluster);
   if(fileCluster == 1){
       return -1;
   }
   index = getFileIndex(0);//looks for free space in openedFile array
-  printf("%d - index\n", index);
   if(index == -1){
       return -1;//already reached 10 opened files at once
   }
@@ -303,6 +301,7 @@ int read2 (FILE2 handle, char *buffer, int size){
     }
   }
   return counter;*/
+  return 0;
 }
 
 
@@ -363,6 +362,7 @@ int write2 (FILE2 handle, char *buffer, int size){
     }
   }
   return write_cluster(clusterBuffer);*/
+  return 0;
 }
 
 
@@ -573,7 +573,7 @@ int getcwd2 (char *pathname, int size){
 
 
 DIR2 opendir2 (char *pathname){
-  DWORD parent, self;
+  DWORD self;
   if(!InitializedDisk){
     t2fsInit();
   }
@@ -657,7 +657,6 @@ DWORD validPath(char *filename, file_type_t fileType){
             return superblock.RootDirCluster; //Valid path: root
         }
     }
-    printf("aqui 1\n");
     if(*((BYTE*)filename) == '/'){
         cluster = superblock.RootDirCluster;
     }
@@ -665,17 +664,12 @@ DWORD validPath(char *filename, file_type_t fileType){
     if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
         return 1;
     }
-    printf("aqui 2\n");
     entry = 0;
-    printf("string: %s | %s\n", truncated, auxName);
     while(strcmp(truncated,"") != 0){
-        printf("aqui 3\n");
         strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
         numOfSectors = 0;
         while(numOfSectors < superblock.SectorsPerCluster){
             while(strcmp(truncated,name) != 0 && entry <= SECTOR_SIZE - sizeof(Record)){
-                printf("truncated: %s | name: %s\n", truncated, name);
-                printf("aqui 4\n");
                 entry = entry + sizeof(Record);
                 strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
                 if(name == NULL){
@@ -691,16 +685,12 @@ DWORD validPath(char *filename, file_type_t fileType){
                     entry = 0;
                     strncpy(name,(const char*)(buffer + entry + 1), MAX_FILE_NAME_SIZE);
                 }
-                printf("aqui 4.5\n");
 
             } else {
-                printf("aqui 5\n");
                 break;
             }
         }
         if(strcmp(truncated,name) == 0){
-            printf("aqui 6\n");
-            printf("truncated: %s | name: %s\n", truncated, name);
             if(*((BYTE *)(buffer + entry)) == TYPEVAL_REGULAR){
                 normalFile++;
                 if(normalFile > 1){
@@ -708,13 +698,11 @@ DWORD validPath(char *filename, file_type_t fileType){
                 }
             }
             cluster = *((DWORD *)(buffer + entry + 1 + MAX_FILE_NAME_SIZE + 4));
-            printf("cluster: %d\n", cluster);
             if(read_sector((cluster*superblock.SectorsPerCluster + superblock.DataSectorStart), buffer) != 0){
                 return 1;
             }
             entry = 0;
         } else {
-            printf("aqui 7\n");
             return 1;
         }
         strcpy(previous,truncated);
@@ -726,10 +714,8 @@ DWORD validPath(char *filename, file_type_t fileType){
         }
     }
     if(fileType == FILE_TYPE_DIRECTORY && normalFile > 0){
-        printf("aqui 8\n");
         return 1; //Invalid, cannot have any normal type file if it's looking for a dir
     }
-    printf("cluster %d - %s\n", cluster, filename);
     return cluster; //Valid Path, return cluster number
 }
 
@@ -740,8 +726,8 @@ DWORD firstFitFat(){
         if(read_sector(sector, buffer) != 0){
             return -1;
         }
-        while(entry < SECTOR_SIZE/4){
-            if(*((DWORD *)(buffer + entry)) == 0x00000000){
+        while(entry < SECTOR_SIZE){
+            if(*((DWORD *)(buffer + entry)) == T2FS_FREE_CLUSTER){
                 return (sector-1)*SECTOR_SIZE + (entry/4);
             }
             entry = entry + 4;
