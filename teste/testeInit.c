@@ -18,8 +18,14 @@ int main(){
     handle = open2("file1.txt");
     delete2("./file1.txt");
     close2(handle);
-    delete2("/file1.txt");
-    create2("fileTeste1.txt");*/
+    delete2("/file1.txt");*/
+    create2("fileTeste1.txt");
+    create2("/dir1/file3.txt");
+    create2("../dir1/file7.txt");
+    printf("abre\n");
+    open2("fileTeste1.txt");
+    open2("dir/file3.txt");
+    open2("dir/file7.txt");
     opendir2("./dir1");
     mkdir2("/dir1/jujubs");
     getcwd2(pathname, 100);
