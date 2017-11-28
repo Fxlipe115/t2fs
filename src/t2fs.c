@@ -8,6 +8,10 @@
 #define FSYSTEM_VERSION 0x7E12
 #define FSYSTEM_ID "T2FS"
 #define MAX_OPENED_FILES 10
+#define T2FS_FREE_CLUSTER 0x00000000
+#define T2FS_INVALID_CLUSTER 0x00000001
+#define T2FS_BAD_SECTOR 0xFFFFFFFE
+#define T2FS_END_OF_FILE 0xFFFFFFFF
 
 /*===== Type definitions =====*/
 typedef struct t2fs_superbloco sBlock;
@@ -77,6 +81,18 @@ void truncateAndConcat(char newPath[]);
 cluster: associated cluster
 return: value of cluster's correspondent FAT entry*/
 DWORD getFatValue(DWORD cluster);
+
+/* Reads a cluster.
+cluster: logical cluster number
+buffer: buffer the size of a cluster
+return: 0 if successful negative value otherwise*/
+int read_cluster(DWORD cluster, BYTE* buffer);
+
+/*Writes a cluster.
+cluster: logical cluster number
+buffer: buffer the size of a cluster
+return: 0 if successful negative value otherwise*/
+int write_cluster(DWORD cluster, BYTE* buffer);
 
 
 /*===== Function implementations =====*/
@@ -236,22 +252,116 @@ int read2 (FILE2 handle, char *buffer, int size){
     t2fsInit();
   }
 
-  if(getFileIndex(handle) == -1){
+  int index = getFileIndex(handle);
+  if(index == -1){
     return -1;
   }
 
   int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
   DWORD fatCode = getFatValue(handle);
 
+  int fileCluster = currentPointer[index] / clusterSize;
+  int clusterIndex = currentPointer[index] % clusterSize;
 
+  while(fileCluster >= 0){
+    if(fatCode == T2FS_FREE_CLUSTER ||
+       fatCode == T2FS_INVALID_CLUSTER ||
+       fatCode == T2FS_BAD_SECTOR){
+      return -1;
+    }else if(fatCode != T2FS_END_OF_FILE){
+      handle = fatCode;
+      fatCode = getFatValue(handle);
+    }else if(fileCluster > 0){
+      return -1;
+    }
+    --fileCluster;
+  }
 
-  return 0;
+  BYTE clusterBuffer[clusterSize];
+  read_cluster(handle, clusterBuffer);
+  counter = 0;
+
+  while(counter < size){
+    buffer[counter] = clusterBuffer[clusterIndex]
+    ++counter;
+    ++clusterIndex;
+
+    if(clusterIndex == clusterSize && counter < size){
+      fatCode = getFatValue(handle)
+      if(fatCode == T2FS_FREE_CLUSTER ||
+         fatCode == T2FS_INVALID_CLUSTER ||
+         fatCode == T2FS_BAD_SECTOR){
+        return -1;
+      }else if(fatCode != T2FS_END_OF_FILE){
+        handle = fatCode;
+        read_cluster(handle, clusterBuffer);
+        clusterIndex = 0;
+      }else{
+        return -1;
+      }
+    }
+  }
+  return counter;
 }
 
 
 int write2 (FILE2 handle, char *buffer, int size){
-  //TODO
-  return 0;
+  if(!InitializedDisk){
+    t2fsInit();
+  }
+
+  int index = getFileIndex(handle);
+  if(index == -1){
+    return -1;
+  }
+
+  int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+  DWORD fatCode = getFatValue(handle);
+
+  int fileCluster = currentPointer[index] / clusterSize;
+  int clusterIndex = currentPointer[index] % clusterSize;
+
+  while(fileCluster >= 0){
+    if(fatCode == T2FS_FREE_CLUSTER ||
+       fatCode == T2FS_INVALID_CLUSTER ||
+       fatCode == T2FS_BAD_SECTOR){
+      return -1;
+    }else if(fatCode != T2FS_END_OF_FILE){
+      handle = fatCode;
+      fatCode = getFatValue(handle);
+    }else if(fileCluster > 0){
+      return -1;
+    }
+    --fileCluster;
+  }
+
+  BYTE clusterBuffer[clusterSize];
+  read_cluster(handle, clusterBuffer);
+  counter = 0;
+
+  while(counter < size){
+    clusterBuffer[clusterIndex] = buffer[counter];
+    ++counter;
+    ++clusterIndex;
+
+    if(clusterIndex == clusterSize){
+      fatCode = getFatValue(handle)
+      if(fatCode == T2FS_FREE_CLUSTER ||
+         fatCode == T2FS_INVALID_CLUSTER ||
+         fatCode == T2FS_BAD_SECTOR ||
+         fatCode == T2FS_END_OF_FILE){
+        break;
+      }else{
+        if(write_cluster(handle, clusterBuffer) != 0){
+          return -1
+        }
+        handle = fatCode;
+        read_cluster(handle, clusterBuffer);
+        clusterIndex = 0;
+      }
+    }
+  }
+  return write_cluster(clusterBuffer);
 }
 
 
@@ -888,4 +998,16 @@ DWORD getFatValue(DWORD cluster){
   unsigned char sector[SECTOR_SIZE];
   read_sector(fatSector, sector);
   return *(DWORD*)&sector[fatIndex * sizeof(DWORD)];
+}
+
+
+int read_cluster(DWORD cluster, BYTE* buffer){
+  //TODO
+  return 0;
+}
+
+
+int write_cluster(DWORD cluster, BYTE* buffer){
+  //TODO
+  return 0;
 }
