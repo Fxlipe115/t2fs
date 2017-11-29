@@ -726,9 +726,9 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry){
     return -1;
   }
 
-  if(handle != openedDir){
-    return -2;
-  }
+  // if(handle != openedDir){
+  //   return -2;
+  // }
 
   int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
   int recordsPerDirectory = clusterSize / sizeof(struct t2fs_record);
@@ -1095,8 +1095,8 @@ int setFatValue(DWORD cluster, DWORD fatCode){
 
 
 int read_cluster(DWORD cluster, BYTE* buffer){
-  int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
-  int initialSector = superblock.DataSectorStart + (cluster / clusterSize);
+  // int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+  int initialSector = superblock.DataSectorStart + (cluster * superblock.SectorsPerCluster);
   for(int i = 0; i < superblock.SectorsPerCluster; i++){
     if(read_sector(initialSector + i, &buffer[i * SECTOR_SIZE]) != 0){
       return -1;
@@ -1107,8 +1107,8 @@ int read_cluster(DWORD cluster, BYTE* buffer){
 
 
 int write_cluster(DWORD cluster, BYTE* buffer){
-  int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
-  int initialSector = superblock.DataSectorStart + (cluster / clusterSize);
+  // int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+  int initialSector = superblock.DataSectorStart + (cluster * superblock.SectorsPerCluster);
   for(int i = 0; i < superblock.SectorsPerCluster; i++){
     if(write_sector(initialSector + i, &buffer[i * SECTOR_SIZE]) != 0){
       return -1;
