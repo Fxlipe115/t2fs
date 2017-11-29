@@ -421,7 +421,7 @@ int write2 (FILE2 handle, char *buffer, int size){
   if(openedFiles[index]->currentPointer + counter > openedFiles[index]->metadata.bytesFileSize){
     openedFiles[index]->metadata.bytesFileSize = openedFiles[index]->currentPointer + counter;
   }
-  openedFiles[index]->currentPointer = openedFiles[index]->metadata.bytesFileSize;
+  openedFiles[index]->currentPointer += counter;
   setMetadata(dirCluster, name, openedFiles[index]->metadata);
 
   return counter;
@@ -497,12 +497,12 @@ int seek2 (FILE2 handle, unsigned int offset){
     if(offset <= fileSize){
       openedFiles[index]->currentPointer = offset;
     }else{
-      return -1;
+      return -2;
     }
   }else if(offset == -1){
     openedFiles[index]->currentPointer = fileSize;
   }else{
-    return -1;
+    return -3;
   }
   return 0;
 }

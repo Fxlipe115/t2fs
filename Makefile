@@ -5,9 +5,9 @@ BIN_DIR=$(realpath ./bin)
 SRC_DIR=$(realpath ./src)
 
 SRC=$(wildcard $(SRC_DIR)/*.c)
-BIN=$(addprefix $(BIN_DIR)/, $(notdir $(SRC:.c=.o)))
+BIN=$(addprefix $(BIN_DIR)/, $(notdir $(SRC:.c=.o))) $(LIB_DIR)/apidisk.o
 LIB=$(LIB_DIR)/libt2fs.a
-CFLAGS=-Wall -lmath -I$(INC_DIR) -std=gnu99 -m32 -O2
+CFLAGS=-Wall -I$(INC_DIR) -std=gnu99 -m32 -O2 -lm
 
 all: $(BIN)
 	ar -cvq $(LIB) $^
