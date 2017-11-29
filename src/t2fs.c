@@ -18,6 +18,12 @@ typedef struct t2fs_superbloco sBlock;
 typedef struct t2fs_record Record;
 typedef enum {FILE_TYPE_DIRECTORY, FILE_TYPE_FILE} file_type_t;
 
+typedef struct openedFileData{
+    int currentPointer;
+    DWORD parentCluster;
+    int entry;
+}OPFILE;
+
 /*===== Global variables =====*/
 int InitializedDisk = 0;
 BYTE buffer[SECTOR_SIZE];
@@ -25,9 +31,10 @@ FILE2 openedFiles[10] = {0};
 DWORD currentDir;
 DWORD openedDir;
 char *nominalPath;
-int *currentPointer;
+//int *currentPointer;
 int currentEntry;
 sBlock superblock;
+OPFILE *filePointer;
 
 /*===== Function prototypes =====*/
 /* Initialize the disk, copying the values of superblock, checking if the data is consistent.
@@ -154,7 +161,10 @@ FILE2 create2 (char *filename){
   memcpy((buffer + (freeEntry - superblock.SectorsPerCluster*((int)floor((freeEntry)/(SECTOR_SIZE/sizeof(Record)))))*sizeof(Record)), &newFile, sizeof(Record));
   write_sector((parent*superblock.SectorsPerCluster + superblock.DataSectorStart + floor(freeEntry/(SECTOR_SIZE/sizeof(Record)))), buffer);
 
-  currentPointer[freeCluster] = 0; //set currentPointer of the file at handler index to 0;
+  //currentPointer[freeCluster] = 0; //set currentPointer of the file at handler index to 0;
+  filePointer[freeCluster].currentPointer = 0;
+  filePointer[freeCluster].parentCluster = parent;
+  filePointer[freeCluster].entry = freeEntry;
   return freeCluster;
 }
 
@@ -227,7 +237,8 @@ FILE2 open2 (char *filename){
       return -1;//already reached 10 opened files at once
   }
   openedFiles[index] = fileCluster;
-  currentPointer[fileCluster] = 0;
+  //currentPointer[fileCluster] = 0;
+  filePointer[fileCluster].currentPointer = 0;
   return fileCluster;
 }
 
@@ -633,7 +644,8 @@ int t2fsInit(){
 
     currentDir = superblock.DataSectorStart + superblock.RootDirCluster*superblock.SectorsPerCluster;
 
-    currentPointer = malloc((int)sizeof(int)*((superblock.NofSectors - superblock.DataSectorStart)/superblock.SectorsPerCluster));
+    //currentPointer = malloc((int)sizeof(int)*((superblock.NofSectors - superblock.DataSectorStart)/superblock.SectorsPerCluster));
+    filePointer = malloc((int)((2*sizeof(int))+sizeof(DWORD))*((superblock.NofSectors - superblock.DataSectorStart)/superblock.SectorsPerCluster));
 
     nominalPath = malloc(sizeof(char)*10);
     strcpy(nominalPath,"/");

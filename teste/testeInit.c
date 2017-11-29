@@ -19,17 +19,17 @@ int main(){
     delete2("./file1.txt");
     close2(handle);
     delete2("/file1.txt");*/
-    create2("fileTeste1.txt");
+    //create2("fileTeste1.txt");
     create2("/dir1/file3.txt");
     create2("../dir1/file7.txt");
-    printf("abre\n");
+    //printf("abre\n");
     open2("fileTeste1.txt");
-    open2("dir/file3.txt");
-    open2("dir/file7.txt");
+    open2("dir1/file3.txt");
+    open2("dir1/file7.txt");
     opendir2("./dir1");
     mkdir2("/dir1/jujubs");
     getcwd2(pathname, 100);
-    printf("primeiro: %s\n", pathname);
+    ///printf("primeiro: %s\n", pathname);
     opendir2("/dir1/jujubs");
     //create2("./dir1/jujubs/fileTesteJ.txt");
     //rmdir2("/dir1/jujubs");
@@ -40,7 +40,7 @@ int main(){
     //chdir2("chuchu");
     chdir2("dir1/jujubs");
     getcwd2(pathname, 100);
-    printf("segundo: %s\n", pathname);
+    ///printf("segundo: %s\n", pathname);
     opendir2("../");
     //create2("criaEmJu.txt");
     //rmdir2("/jujubs2");
@@ -48,9 +48,10 @@ int main(){
     //rmdir2("/jujubs2");
     chdir2("../../jujubs2");
     getcwd2(pathname, 100);
-    printf("terceiro: %s\n", pathname);
+    ///printf("terceiro: %s\n", pathname);
     opendir2("../../");
-    identify2(pathname,80);
-    printf("identify: %s\n", pathname);
+    opendir2("jujubs2");
+    //identify2(pathname,80);
+    //printf("identify: %s\n", pathname);
     return 0;
 }
