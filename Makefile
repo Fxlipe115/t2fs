@@ -7,7 +7,7 @@ SRC_DIR=$(realpath ./src)
 SRC=$(wildcard $(SRC_DIR)/*.c)
 BIN=$(addprefix $(BIN_DIR)/, $(notdir $(SRC:.c=.o))) $(LIB_DIR)/apidisk.o
 LIB=$(LIB_DIR)/libt2fs.a
-CFLAGS=-Wall -I$(INC_DIR) -std=gnu99 -m32 -O2 -lm
+CFLAGS=-Wall -I$(INC_DIR) -std=gnu99 -m32 -O0 #-ggdb3
 
 all: $(BIN)
 	ar -cvq $(LIB) $^
