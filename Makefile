@@ -1,22 +1,36 @@
-#
-# Makefile ESQUELETO
-#
-# DEVE ter uma regra "all" para geração da biblioteca
-# regra "clean" para remover todos os objetos gerados.
-#
-# NECESSARIO adaptar este esqueleto de makefile para suas necessidades.
-#
-# 
+CC=gcc -c
+LIB_DIR=$(realpath ./lib)
+INC_DIR=$(realpath ./include)
+BIN_DIR=$(realpath ./bin)
+SRC_DIR=$(realpath ./src)
 
-CC=gcc
-LIB_DIR=./lib
-INC_DIR=./include
-BIN_DIR=./bin
-SRC_DIR=./src
+SRC=$(wildcard $(SRC_DIR)/*.c)
+BIN=$(addprefix $(BIN_DIR)/, $(notdir $(SRC:.c=.o)))
+LIB=$(LIB_DIR)/libt2fs.a
+CFLAGS=-Wall -lmath -I$(INC_DIR) -std=gnu99 -m32 -O2
 
-all:
+all: $(BIN)
+	ar -cvq $(LIB) $^
+
+$(BIN_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(BIN_DIR)
+	$(CC) -o $@ $< $(CFLAGS)
+
+.PHONY: install
+.PHONY: debug
+.PHONY: clean
+
+install: $(LIB) $(INC_DIR)/t2fs.h
+	@install -t /usr/lib $(LIB)
+	@install -t /usr/include $(INC_DIR)/*
+
+debug:
+	@echo $(SRC)
+	@echo $(BIN)
+	@echo $(LIB_DIR)
+	@echo $(INC_DIR)
+	@echo $(BIN_DIR)
+	@echo $(SRC_DIR)
 
 clean:
 	rm -rf $(LIB_DIR)/*.a $(BIN_DIR)/*.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~
-
-
