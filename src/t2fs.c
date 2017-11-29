@@ -162,7 +162,6 @@ FILE2 create2 (char *filename){
   if(read_sector((superblock.pFATSectorStart + (int)((double)freeCluster/SECTOR_SIZE)), buffer) != 0){
     return -1;
   }
-
   memcpy((buffer + (freeCluster)*4), &clusterValue,4);
   write_sector((superblock.pFATSectorStart + (int)((double)freeCluster/SECTOR_SIZE)), buffer);
 
@@ -183,6 +182,7 @@ FILE2 create2 (char *filename){
   // filePointer[freeCluster].currentPointer = 0;
   // filePointer[freeCluster].parentCluster = parent;
   // filePointer[freeCluster].entry = freeEntry;
+  open2(filename);
   return freeCluster;
 }
 
