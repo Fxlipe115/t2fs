@@ -717,7 +717,28 @@ DIR2 opendir2 (char *pathname){
 
 
 int readdir2 (DIR2 handle, DIRENT2 *dentry){
-  //TODO
+  if(!InitializedDisk){
+    t2fsInit();
+  }
+
+  if(handle != openedDir){
+    return -2;
+  }
+
+  int clusterSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+  int recordsPerDirectory = clusterSize / sizeof(struct t2fs_record);
+
+  if(currentDir == recordsPerDirectory){
+    return -END_OF_DIR;
+  }
+
+  struct t2fs_record directory[clusterSize / sizeof(struct t2fs_record)];
+  if(read_cluster((DWORD)handle, (unsigned char*)directory) != 0){
+    return -3;
+  }
+  memcpy(dentry, &directory[currentEntry], sizeof(struct t2fs_record));
+  ++currentDir;
+
   return 0;
 }
 
